@@ -1,5 +1,7 @@
 #define OLC_PGE_APPLICATION
 
+//DrZoid: ported from lonecoder's to olcpixelgameengine and customized
+
 /*
 OneLoneCoder.com - Code-It-Yourself! Racing Game at the command prompt (quick and simple c++)
 "Let's go, go, go!!!" - @Javidx9
@@ -53,7 +55,7 @@ https://youtu.be/KkMZI5Jbf18
 Last Updated: 10/07/2017
 */
 
-#include <iostream>
+
 #include <string>
 using namespace std;
 
@@ -62,11 +64,10 @@ using namespace std;
 #define OLC_PGEX_FONT
 #include "olcPGEX_Font.h"
 
-
-class OneLoneCoder_FormulaOLC : public olc::PixelGameEngine
+class RigoJauge : public olc::PixelGameEngine
 {
 public:
-  OneLoneCoder_FormulaOLC()
+  RigoJauge()
   {
     sAppName = "Rigojauge2000";
   }
@@ -99,7 +100,6 @@ protected:
   // Called by olcConsoleGameEngine
   virtual bool OnUserCreate()
   { 
-
     // Load the sprite
 	  sprTile = std::make_unique<olc::Sprite>("./gfx/car_color.png");
     pixelFont = std::make_unique<olc::Font>( "./gfx/Pixels.png" );
@@ -194,8 +194,6 @@ protected:
     float fTargetCurvature = vecTrack[nTrackSection - 1].first;
     float fTrackCurveDiff = (fTargetCurvature - fCurvature) * fElapsedTime * fSpeed;
 
- 
-
     // Accumulate player curvature
     fCurvature += fTrackCurveDiff;
 
@@ -270,7 +268,6 @@ protected:
           Draw(x, nRow, nClipColour);
         if (x >= nRightGrass && x < ScreenWidth())
           Draw(x, nRow, nGrassColour);
-
       }
 
     // Draw Car - car position on road is proportional to difference between
@@ -286,27 +283,38 @@ protected:
 
     int nCarPos = ScreenWidth() / 2 + ((int)(ScreenWidth() * fCarPos) / 2.0) - 40; // Offset for sprite
 
-    // Draw a car that represents what the player is doing
-  
-    //estimate direction based on current curvature
+ 
+    //Draw a car that represents what the player is doing
+
+    //DrZoid: direction = current curvature
     
     nCarDirection = 0;
     if (fCurvature < -0.1f) nCarDirection = -1;
     if (fCurvature > +0.1f) nCarDirection = 1;
+
+    //TODO: uphill/downhill
+    bool bUpHill = false;
+    bool bDownHill = false;
     
     olc::vi2d vSpritePos = olc::vi2d(0,0);
     switch (nCarDirection)
     {
       //left
       case -1:
-        vSpritePos = olc::vi2d(7,0);
+        if(bDownHill) vSpritePos = olc::vi2d(8,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(6,0);
+        else vSpritePos = olc::vi2d(7,0);
       break;
       //front
       case 0:
+        if(bDownHill) vSpritePos = olc::vi2d(5,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(3,0);
         vSpritePos = olc::vi2d(4,0);
       break;
       //right
       case 1:
+        if(bDownHill) vSpritePos = olc::vi2d(2,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(0,0);
         vSpritePos = olc::vi2d(1,0);
       break;
     }
@@ -316,45 +324,16 @@ protected:
     DrawPartialSprite(olc::vi2d(nCarPos, 240 - 58 - 8), sprTile.get(), vSpritePos * sprTileSize, sprTileSize, 2);
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
     
-
-
     // Draw Stats
-   
     auto text = "fCurvature: " + to_string(fCurvature);
-
     auto text_size   = pixelFont->GetTextSizeProp( text );
     
     // Compute the centre points so we can rotate about them
     auto text_centre      = text_size / 2.0f;
     auto fScale                 = 1.0f;
     
-    pixelFont->DrawRotatedStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
+    //pixelFont->DrawRotatedStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
         
-    //DrawString(0, 0, L"Distance: " + to_wstring(fDistance));
-    //DrawString(0, 1, L"Target Curvature: " + to_wstring(fCurvature));
-    //DrawString(0, 2, L"Player Curvature: " + to_wstring(fPlayerCurvature));
-    //DrawString(0, 3, L"Player Speed    : " + to_wstring(fSpeed));
-    //DrawString(0, 4, L"Track Curvature : " + to_wstring(fTrackCurvature));
-
-    auto disp_time = [](float t) // Little lambda to turn floating point seconds into minutes:seconds:millis string
-    {
-      int nMinutes = t / 60.0f;
-      int nSeconds = t - (nMinutes * 60.0f);
-      int nMilliSeconds = (t - (float)nSeconds) * 1000.0f;
-      return to_wstring(nMinutes) + L"." + to_wstring(nSeconds) + L":" + to_wstring(nMilliSeconds);
-    };
-
-    // Display current laptime
-    //DrawString(10, 8, disp_time(fCurrentLapTime));
-
-    // Display last 5 lap times
-    //int j = 10;
-    //for (auto l : listLapTimes)
-    //{
-    //	DrawString(10, j, disp_time(l));
-    //	j++;
-    //}
-
     // DrZoid: c'est pas moi c'est GPT
     // Draw circular mask
     for (int y = 0; y < nScreenHeight; y++)
@@ -367,7 +346,7 @@ protected:
             if (nX * nX + nY * nY > nRadius * nRadius)
             {
                 // Draw black outside the circular screen
-                Draw(x, y, olc::Pixel(0, 0, 0));
+                Draw(x, y, olc::BLACK);
             }
         }
     }
@@ -377,7 +356,7 @@ protected:
 
 int main()
 {
-  OneLoneCoder_FormulaOLC game;
+  RigoJauge game;
   if (game.Construct(240, 240, 1, 1))
     game.Start();
 
