@@ -9,8 +9,6 @@ Update and install the compiler, related build tools, and libraries required to 
   sudo apt install build-essential libglu1-mesa-dev libpng-dev
 
 
-# Building
+# Build
 
 g++ -o olcExampleProgram olcExampleProgram.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
-
-
