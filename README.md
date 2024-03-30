@@ -12,3 +12,7 @@ Update and install the compiler, related build tools, and libraries required to 
 # Build
 
 g++ -o olcExampleProgram olcExampleProgram.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
+
+# Generate font sprite
+
+python3 generatefont.py Arial.ttf 20
