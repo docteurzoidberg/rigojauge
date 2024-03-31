@@ -86,6 +86,11 @@ public:
     vecTrack.push_back(make_pair(0.0f, 200.0f));
   }
 
+  void start() {
+    bStarted = true; 
+    fSpeed = 1.0f;
+  }
+
   void update(float fElapsedTime) {
 
     // Clamp Speed
@@ -135,13 +140,15 @@ public:
   }
 
   float fCarPos = 0.0f;			      // Current car position
-  float fSpeed = 1.0f;		        // Current speed
+  float fSpeed = 0.0f;		        // Current speed
   float fDistance= 0.0f;          // Distance car has travelled around track
   float fCurvature = 0.0f;		    // Current track curvature, lerped between track sections
   float fTrackCurvature = 0.0f;	  // Accumulation of track curvature
   float fPlayerCurvature = 0.0f;	// Accumulation of player curvature 
   int nTrackSection = 0;          // Current track section
   int nCarDirection = 0;          // Current car direction
+
+  bool bStarted = false;
 
 private:
 
@@ -180,6 +187,8 @@ private:
   int phase = 0;
   int landscapeX = 0;
   int landscapeY = 0;
+
+  bool bDrawMask = true;
 
 protected:
   
@@ -336,9 +345,14 @@ protected:
   // Called by olcConsoleGameEngine
   virtual bool OnUserUpdate(float fElapsedTime)
   {
-  
+    // Handle Input
+    if (GetKey(olc::Key::D).bPressed)
+      bShowDebug = !bShowDebug;
+    if(GetKey(olc::Key::M).bPressed)
+      bDrawMask = !bDrawMask;
+    if (GetKey(olc::Key::SPACE).bPressed && !game.bStarted)
+     game.start();
     
-
     //  if (m_keys[VK_UP].bHeld)
     //		fSpeed += 2.0f * fElapsedTime;
     //	else
@@ -371,8 +385,14 @@ protected:
     DrawLandscape();
     DrawRoad();
     DrawCar();
+    if(!game.bStarted) {
+      //TODO: press start message
+      //TODO: lap start flag sprite
+      //TODO: side animations
+    }
     DrawDebug();
-    DrawMask();   // Draw circular mask
+    if(bDrawMask)
+      DrawMask();   // Draw circular mask
     return true;
   }
 };

@@ -12,6 +12,13 @@ Update and install the compiler, related build tools, and libraries required to 
   g++ -o rigo rigojauge.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
   ./rigo
 
-# Generate font sprite png
+# Generate new font sprite png
 
   python3 generatefont.py Arial.ttf 20
+
+
+# Controls
+
+M - toggle circular mask
+D - toggle debug infos
+SPACE - start game
