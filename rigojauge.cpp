@@ -1,6 +1,7 @@
+#include <memory>
 #define OLC_PGE_APPLICATION
 
-//DrZoid: ported from lonecoder's to olcpixelgameengine and customized
+//DrZoid: ported from lonecoder's to olcpixelgameengine and customized a lot
 
 /*
 OneLoneCoder.com - Code-It-Yourself! Racing Game at the command prompt (quick and simple c++)
@@ -51,8 +52,6 @@ Blog: www.onelonecoder.com
 Video:
 ~~~~~~
 https://youtu.be/KkMZI5Jbf18
-
-Last Updated: 10/07/2017
 */
 
 
@@ -74,35 +73,40 @@ public:
 
 private:
 
-  float fDistance = 0.0f;			// Distance car has travelled around track
-  float fCurvature = 0.0f;		// Current track curvature, lerped between track sections
-  float fTrackCurvature = 0.0f;	// Accumulation of track curvature
-  float fTrackDistance = 0.0f;	// Total distance of track
+  float fDistance = 0.0f;			    // Distance car has travelled around track
+  float fCurvature = 0.0f;		    // Current track curvature, lerped between track sections
+  float fTrackCurvature = 0.0f;	  // Accumulation of track curvature
+  float fTrackDistance = 0.0f;	  // Total distance of track
 
-  float fCarPos = 0.0f;			// Current car position
-  float fPlayerCurvature = 0.0f;			// Accumulation of player curvature
-  float fSpeed = 1.0f;			// Current player speed
+  float fCarPos = 0.0f;			      // Current car position
+  float fPlayerCurvature = 0.0f;	// Accumulation of player curvature
+  float fSpeed = 1.0f;			      // Current player speed
+
+  olc::Pixel COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
+  olc::Pixel COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
+  olc::Pixel COLOR_RUMBLE = olc::RED;
+  olc::Pixel COLOR_ROAD = olc::Pixel(125,124,125);  //gray
+  olc::Pixel COLOR_SKY = olc::Pixel(20,87,141); //
 
   vector<pair<float, float>> vecTrack; // Track sections, sharpness of bend, length of section
 
-  list<float> listLapTimes;		// List of previous lap times
-  float fCurrentLapTime;			// Current lap time
-   
-
   std::unique_ptr<olc::Font> pixelFont;
-
-  std::unique_ptr<olc::Sprite> sprTile;
-  olc::vi2d sprTileSize = olc::vi2d( 40, 29 );
-
+  std::unique_ptr<olc::Sprite> sprCar;
+  std::unique_ptr<olc::Sprite> sprPalmAnimation;
+  std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
+  olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
+  olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
 
 protected:
 
   // Called by olcConsoleGameEngine
   virtual bool OnUserCreate()
   { 
-    // Load the sprite
-	  sprTile = std::make_unique<olc::Sprite>("./gfx/car_color.png");
-    pixelFont = std::make_unique<olc::Font>( "./gfx/Pixels.png" );
+    // Load the sprites
+	  sprCar = std::make_unique<olc::Sprite>("./sprites/car_color.png");
+    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/palm_animation1.png");
+    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/landscape_repeat2.png");
+    pixelFont = std::make_unique<olc::Font>( "./sprites/pixels_font.png" );
 
     // Define track
     vecTrack.push_back(make_pair(0.0f, 10.0f));		// Short section for start/finish line
@@ -116,14 +120,6 @@ protected:
     vecTrack.push_back(make_pair(0.0f, 200.0f));
     vecTrack.push_back(make_pair(0.2f, 500.0f));
     vecTrack.push_back(make_pair(0.0f, 200.0f));
-
-    // Calculate total track distance, so we can set lap times
-    for (auto t : vecTrack)
-      fTrackDistance += t.second;
-
-    listLapTimes = { 0,0,0,0,0 };
-    fCurrentLapTime = 0.0f;
-
     return true;
   }
 
@@ -173,16 +169,6 @@ protected:
     float fOffset = 0;
     int nTrackSection = 0;
 
-    // Lap Timing and counting
-    fCurrentLapTime += fElapsedTime;
-    if (fDistance >= fTrackDistance)
-    {
-      fDistance -= fTrackDistance;
-      listLapTimes.push_front(fCurrentLapTime);
-      listLapTimes.pop_back();
-      fCurrentLapTime = 0.0f;
-    }
-    
     // Find position on track (could optimise)
     while (nTrackSection < vecTrack.size() && fOffset <= fDistance)
     {			
@@ -209,24 +195,28 @@ protected:
    // Adjust the player curvature based on the difference
     fPlayerCurvature += fCurvatureDiff * fElapsedTime * fSpeed;
 
-    // Draw Sky - light blue and dark blue
+    //Draw Sky 
     for (int y = 0; y < ScreenHeight() / 2; y++) {
       for (int x = 0; x < ScreenWidth(); x++) {
-        Draw(x, y, y< ScreenHeight() / 4 ? olc::BLUE: olc::DARK_BLUE);
-      }
-    }
-      
-    // Draw Scenery - our hills are a rectified sine wave, where the phase is adjusted by the
-    // accumulated track curvature
-    for (int x = 0; x < ScreenWidth(); x++)
-    {
-      int nHillHeight = (int)(fabs(sinf(x * 0.01f + fTrackCurvature) * 16.0f));
-      for (int y = (ScreenHeight() / 2) - nHillHeight; y < ScreenHeight() / 2; y++) {
-        Draw(x, y, olc::YELLOW);
+        Draw(x, y, COLOR_SKY);
       }
     }
 
+    // Define the width of the sprite
+    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
 
+
+    // Draw Scenery - using a repeating sprite for hills
+ 
+    // Calculate the phase based on track curvature and x position
+    int phase = (int) ((nScreenWidth-sprLandscapeSize.x)/2) * fCurvature;
+ 
+    int spriteX = (nScreenWidth-sprLandscapeSize.x)/2 + phase;
+    int spriteY = nScreenHeight/2 - sprLandscapeSize.y ;
+    
+    DrawPartialSprite(olc::vi2d(spriteX , spriteY), sprLandscapeRepeat.get(), olc::vi2d(0,0), sprLandscapeSize, 1);
+    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
+    
     // Draw Track - Each row is split into grass, clip-board and track
     for (int y = 0; y < ScreenHeight() / 2; y++)
       for (int x = 0; x < ScreenWidth(); x++)
@@ -251,11 +241,11 @@ protected:
 
         // Using periodic oscillatory functions to give lines, where the phase is controlled
         // by the distance around the track. These take some fine tuning to give the right "feel"
-        olc::Pixel nGrassColour = sinf(20.0f *  powf(1.0f - fPerspective,3) + fDistance * 0.1f) > 0.0f ? olc::GREEN : olc::DARK_GREEN;
+        olc::Pixel nGrassColour = sinf(20.0f *  powf(1.0f - fPerspective,3) + fDistance * 0.1f) > 0.0f ? COLOR_GRASS_LIGHT : COLOR_GRASS_DARK;
         olc::Pixel nClipColour = sinf(80.0f *  powf(1.0f - fPerspective, 2) + fDistance) > 0.0f ? olc::RED : olc::WHITE;
         
         // Start finish straight changes the road colour to inform the player lap is reset
-        olc::Pixel nRoadColour = (nTrackSection-1) == 0 ? olc::WHITE : olc::GREY;
+        olc::Pixel nRoadColour = (nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
 
         // Draw the row segments
         if (x >= 0 && x < nLeftGrass)
@@ -266,7 +256,7 @@ protected:
           Draw(x, nRow, nRoadColour);
         if (x >= nRightClip && x < nRightGrass)
           Draw(x, nRow, nClipColour);
-        if (x >= nRightGrass && x < ScreenWidth())
+        if (x >= nRightGrass && x < ScreenWidth()) 
           Draw(x, nRow, nGrassColour);
       }
 
@@ -321,11 +311,11 @@ protected:
 
     //Draw the car sprite
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
-    DrawPartialSprite(olc::vi2d(nCarPos, 240 - 58 - 8), sprTile.get(), vSpritePos * sprTileSize, sprTileSize, 2);
+    DrawPartialSprite(olc::vi2d(nCarPos, nScreenHeight - (sprCarSize.y*2) - 8), sprCar.get(), vSpritePos * sprCarSize, sprCarSize, 2);
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
     
     // Draw Stats
-    auto text = "fCurvature: " + to_string(fCurvature);
+    auto text = "phase: " + to_string(phase);
     auto text_size   = pixelFont->GetTextSizeProp( text );
     
     // Compute the centre points so we can rotate about them
@@ -342,7 +332,6 @@ protected:
         {
             int nX = x - nScreenWidth / 2;
             int nY = y - nScreenHeight / 2;
-
             if (nX * nX + nY * nY > nRadius * nRadius)
             {
                 // Draw black outside the circular screen
