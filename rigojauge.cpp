@@ -63,51 +63,15 @@ using namespace std;
 #define OLC_PGEX_FONT
 #include "olcPGEX_Font.h"
 
-class RigoJauge : public olc::PixelGameEngine
+#define SCREEN_W 240
+#define SCREEN_H 240
+#define SCREEN_PIXELSIZE 2
+
+class RigoJauge
 {
 public:
   RigoJauge()
   {
-    sAppName = "Rigojauge2000";
-  }
-
-private:
-
-  float fDistance = 0.0f;			    // Distance car has travelled around track
-  float fCurvature = 0.0f;		    // Current track curvature, lerped between track sections
-  float fTrackCurvature = 0.0f;	  // Accumulation of track curvature
-  float fTrackDistance = 0.0f;	  // Total distance of track
-
-  float fCarPos = 0.0f;			      // Current car position
-  float fPlayerCurvature = 0.0f;	// Accumulation of player curvature
-  float fSpeed = 1.0f;			      // Current player speed
-
-  olc::Pixel COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
-  olc::Pixel COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
-  olc::Pixel COLOR_RUMBLE = olc::RED;
-  olc::Pixel COLOR_ROAD = olc::Pixel(125,124,125);  //gray
-  olc::Pixel COLOR_SKY = olc::Pixel(20,87,141); //
-
-  vector<pair<float, float>> vecTrack; // Track sections, sharpness of bend, length of section
-
-  std::unique_ptr<olc::Font> pixelFont;
-  std::unique_ptr<olc::Sprite> sprCar;
-  std::unique_ptr<olc::Sprite> sprPalmAnimation;
-  std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
-  olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
-  olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
-
-protected:
-
-  // Called by olcConsoleGameEngine
-  virtual bool OnUserCreate()
-  { 
-    // Load the sprites
-	  sprCar = std::make_unique<olc::Sprite>("./sprites/car_color.png");
-    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/palm_animation1.png");
-    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/landscape_repeat2.png");
-    pixelFont = std::make_unique<olc::Font>( "./sprites/pixels_font.png" );
-
     // Define track
     vecTrack.push_back(make_pair(0.0f, 10.0f));		// Short section for start/finish line
     vecTrack.push_back(make_pair(0.0f, 200.0f));
@@ -120,17 +84,260 @@ protected:
     vecTrack.push_back(make_pair(0.0f, 200.0f));
     vecTrack.push_back(make_pair(0.2f, 500.0f));
     vecTrack.push_back(make_pair(0.0f, 200.0f));
+  }
+
+  void update(float fElapsedTime) {
+
+    // Clamp Speed
+    if (fSpeed < 0.0f)	fSpeed = 0.0f;
+    if (fSpeed > 1.0f)	fSpeed = 1.0f;
+
+    // Move car along track according to car speed
+    fDistance += (70.0f * fSpeed) * fElapsedTime;	   
+    
+    // Get Point on track
+    float fOffset = 0;
+    nTrackSection = 0;
+
+    // Find position on track (could optimise)
+    while (nTrackSection < vecTrack.size() && fOffset <= fDistance)
+    {			
+      fOffset += vecTrack[nTrackSection].second;
+      nTrackSection++;
+    }
+    
+    // Interpolate towards target track curvature
+    float fTargetCurvature = vecTrack[nTrackSection - 1].first;
+    float fTrackCurveDiff = (fTargetCurvature - fCurvature) * fElapsedTime * fSpeed;
+
+    // Accumulate player curvature
+    fCurvature += fTrackCurveDiff;
+
+    // Clamp the player curvature to ensure it stays within bounds
+    if (fPlayerCurvature < -1.0f) fPlayerCurvature = -1.0f;
+    if (fPlayerCurvature > 1.0f) fPlayerCurvature = 1.0f;
+
+    fTrackCurvature += (fCurvature) * fElapsedTime * fSpeed;
+
+    // Calculate the difference between track curvature and car position
+    float fCurvatureDiff = fTrackCurvature - fPlayerCurvature;
+    
+   // Adjust the player curvature based on the difference
+    fPlayerCurvature += fCurvatureDiff * fElapsedTime * fSpeed;  
+
+    nCarDirection = 0;
+    if (fCurvature < -0.1f) nCarDirection = -1;
+    if (fCurvature > +0.1f) nCarDirection = 1;
+
+    //DRZOID: forced for now
+    fCarPos = 0.0f;
+    fPlayerCurvature = fTrackCurvature;
+  }
+
+  float fCarPos = 0.0f;			      // Current car position
+  float fSpeed = 1.0f;		        // Current speed
+  float fDistance= 0.0f;          // Distance car has travelled around track
+  float fCurvature = 0.0f;		    // Current track curvature, lerped between track sections
+  float fTrackCurvature = 0.0f;	  // Accumulation of track curvature
+  float fPlayerCurvature = 0.0f;	// Accumulation of player curvature 
+  int nTrackSection = 0;          // Current track section
+  int nCarDirection = 0;          // Current car direction
+
+private:
+
+ vector<pair<float, float>> vecTrack; // Track sections, sharpness of bend, length of section
+  
+};
+
+
+class RigoJaugeRenderer : public olc::PixelGameEngine
+{
+public:
+  RigoJaugeRenderer()
+  {
+    sAppName = "Rigojauge2000";
+  }
+
+private:  
+  RigoJauge game;
+  
+  bool bShowDebug = false;
+
+  olc::Pixel COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
+  olc::Pixel COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
+  olc::Pixel COLOR_RUMBLE = olc::RED;
+  olc::Pixel COLOR_ROAD = olc::Pixel(125,124,125);  //gray
+  olc::Pixel COLOR_SKY = olc::Pixel(20,87,141); //
+
+  std::unique_ptr<olc::Font> pixelFont;
+  std::unique_ptr<olc::Sprite> sprCar;
+  std::unique_ptr<olc::Sprite> sprPalmAnimation;
+  std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
+  olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
+  olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
+
+  int nMaskRadius = std::min(SCREEN_W, SCREEN_H) / 2;
+  int phase = 0;
+  int landscapeX = 0;
+  int landscapeY = 0;
+
+protected:
+  
+  void DrawDebug() {
+    if(!bShowDebug) return;
+    // Draw Stats
+    auto text = "phase: " + to_string(phase);
+    auto text_size   = pixelFont->GetTextSizeProp( text );
+    
+    // Compute the centre points so we can rotate about them
+    auto text_centre      = text_size / 2.0f;
+    auto fScale                 = 1.0f;
+    
+    pixelFont->DrawRotatedStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
+  }
+
+  void DrawSky() {
+    for (int y = 0; y < ScreenHeight() / 2; y++) {
+      for (int x = 0; x < ScreenWidth(); x++) {
+        Draw(x, y, COLOR_SKY);
+      }
+    }
+  }
+
+  void DrawLandscape() {
+    // Calculate the phase based on track curvature and x position
+    phase = (int) ((ScreenWidth()-sprLandscapeSize.x)/2) * game.fCurvature;
+    landscapeX = (ScreenWidth()-sprLandscapeSize.x)/2 + phase;
+    landscapeY = ScreenHeight()/2 - sprLandscapeSize.y ;
+  
+    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
+    DrawPartialSprite(olc::vi2d(landscapeX , landscapeY), sprLandscapeRepeat.get(), olc::vi2d(0,0), sprLandscapeSize, 1);  
+    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
+  }
+
+  void DrawRoad() {
+    
+    // Draw Track - Each row is split into grass, clip-board and track
+    for (int y = 0; y < ScreenHeight() / 2; y++) 
+    {
+      for (int x = 0; x < ScreenWidth(); x++)
+      {
+        // Perspective is used to modify the width of the track row segments
+        float fPerspective = (float)y / (ScreenHeight()/2.0f);
+        float fRoadWidth = 0.1f + fPerspective * 0.8f; // Min 10% Max 90%
+        float fClipWidth = fRoadWidth * 0.15f;
+        fRoadWidth *= 0.5f;	// Halve it as track is symmetrical around center of track, but offset...
+
+        // ...depending on where the middle point is, which is defined by the current
+        // track curvature.
+        float fMiddlePoint = 0.5f + game.fCurvature * powf((1.0f - fPerspective), 3);
+
+        // Work out segment boundaries
+        int nLeftGrass = (fMiddlePoint - fRoadWidth - fClipWidth) * ScreenWidth();
+        int nLeftClip = (fMiddlePoint - fRoadWidth) * ScreenWidth();
+        int nRightClip = (fMiddlePoint + fRoadWidth) * ScreenWidth();
+        int nRightGrass = (fMiddlePoint + fRoadWidth + fClipWidth) * ScreenWidth();
+        
+        int nRow = ScreenHeight() / 2 + y;
+
+        // Using periodic oscillatory functions to give lines, where the phase is controlled
+        // by the distance around the track. These take some fine tuning to give the right "feel"
+        olc::Pixel nGrassColour = sinf(20.0f *  powf(1.0f - fPerspective,3) + game.fDistance * 0.1f) > 0.0f ? COLOR_GRASS_LIGHT : COLOR_GRASS_DARK;
+        olc::Pixel nClipColour = sinf(80.0f *  powf(1.0f - fPerspective, 2) + game.fDistance) > 0.0f ? COLOR_RUMBLE : olc::WHITE;
+        
+        // Start finish straight changes the road colour to inform the player lap is reset
+        olc::Pixel nRoadColour = (game.nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
+
+        // Draw the row segments
+        if (x >= 0 && x < nLeftGrass)
+          Draw(x, nRow, nGrassColour);
+        if (x >= nLeftGrass && x < nLeftClip)
+          Draw(x, nRow, nClipColour);
+        if (x >= nLeftClip && x < nRightClip)
+          Draw(x, nRow, nRoadColour);
+        if (x >= nRightClip && x < nRightGrass)
+          Draw(x, nRow, nClipColour);
+        if (x >= nRightGrass && x < ScreenWidth()) 
+          Draw(x, nRow, nGrassColour);
+      }
+    }
+  }
+
+  void DrawCar() {
+    
+    // Draw Car
+    int carSpriteX = ScreenWidth() / 2 + ((int)(ScreenWidth() * game.fCarPos) / 2.0) - 40;
+    int carSpriteY = ScreenHeight() - (sprCarSize.y*2) - 8;
+ 
+
+    //TODO: uphill/downhill
+    bool bUpHill = false;
+    bool bDownHill = false;
+    
+    olc::vi2d vSpritePos = olc::vi2d(0,0);
+    switch (game.nCarDirection)
+    {
+      //left
+      case -1:
+        if(bDownHill) vSpritePos = olc::vi2d(8,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(6,0);
+        else vSpritePos = olc::vi2d(7,0);
+      break;
+      //front
+      case 0:
+        if(bDownHill) vSpritePos = olc::vi2d(5,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(3,0);
+        vSpritePos = olc::vi2d(4,0);
+      break;
+      //right
+      case 1:
+        if(bDownHill) vSpritePos = olc::vi2d(2,0);
+        else if(bUpHill) vSpritePos = olc::vi2d(0,0);
+        vSpritePos = olc::vi2d(1,0);
+      break;
+    }
+
+    //Draw the car choosed sprite
+    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
+    DrawPartialSprite(olc::vi2d(carSpriteX, carSpriteY), sprCar.get(), vSpritePos * sprCarSize, sprCarSize, 2);
+    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
+  }
+
+  void DrawMask() {
+    for (int y = 0; y < ScreenHeight(); y++)
+    {
+        for (int x = 0; x < ScreenWidth(); x++)
+        {
+            int nX = x - ScreenWidth() / 2;
+            int nY = y - ScreenHeight() / 2;
+            if (nX * nX + nY * nY > nMaskRadius * nMaskRadius)
+            {
+                // Draw black outside the circular screen
+                Draw(x, y, olc::BLACK);
+            }
+        }
+    }
+  }
+
+  // Called by olcConsoleGameEngine
+  virtual bool OnUserCreate()
+  { 
+    //init logic
+    game = RigoJauge();
+
+    // Load the sprites
+	  sprCar = std::make_unique<olc::Sprite>("./sprites/car_color.png");
+    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/palm_animation1.png");
+    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/landscape_repeat2.png");
+    pixelFont = std::make_unique<olc::Font>( "./sprites/pixels_font.png" );
     return true;
   }
 
   // Called by olcConsoleGameEngine
   virtual bool OnUserUpdate(float fElapsedTime)
   {
-    // Handle control input
-    int nCarDirection = 0;
-    int nScreenWidth = ScreenWidth();
-    int nScreenHeight = ScreenHeight();
-    int nRadius = std::min(nScreenWidth, nScreenHeight) / 2;
+  
+    
 
     //  if (m_keys[VK_UP].bHeld)
     //		fSpeed += 2.0f * fElapsedTime;
@@ -158,196 +365,22 @@ protected:
     //}
       
 
-    // Clamp Speed
-    if (fSpeed < 0.0f)	fSpeed = 0.0f;
-    if (fSpeed > 1.0f)	fSpeed = 1.0f;
-    
-    // Move car along track according to car speed
-    fDistance += (70.0f * fSpeed) * fElapsedTime;
-    
-    // Get Point on track
-    float fOffset = 0;
-    int nTrackSection = 0;
-
-    // Find position on track (could optimise)
-    while (nTrackSection < vecTrack.size() && fOffset <= fDistance)
-    {			
-      fOffset += vecTrack[nTrackSection].second;
-      nTrackSection++;
-    }
-    
-    // Interpolate towards target track curvature
-    float fTargetCurvature = vecTrack[nTrackSection - 1].first;
-    float fTrackCurveDiff = (fTargetCurvature - fCurvature) * fElapsedTime * fSpeed;
-
-    // Accumulate player curvature
-    fCurvature += fTrackCurveDiff;
-
-    // Clamp the player curvature to ensure it stays within bounds
-    if (fPlayerCurvature < -1.0f) fPlayerCurvature = -1.0f;
-    if (fPlayerCurvature > 1.0f) fPlayerCurvature = 1.0f;
-
-    fTrackCurvature += (fCurvature) * fElapsedTime * fSpeed;
-
-    // Calculate the difference between track curvature and car position
-    float fCurvatureDiff = fTrackCurvature - fPlayerCurvature;
-    
-   // Adjust the player curvature based on the difference
-    fPlayerCurvature += fCurvatureDiff * fElapsedTime * fSpeed;
-
-    //Draw Sky 
-    for (int y = 0; y < ScreenHeight() / 2; y++) {
-      for (int x = 0; x < ScreenWidth(); x++) {
-        Draw(x, y, COLOR_SKY);
-      }
-    }
-
-    // Define the width of the sprite
-    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
-
-
-    // Draw Scenery - using a repeating sprite for hills
- 
-    // Calculate the phase based on track curvature and x position
-    int phase = (int) ((nScreenWidth-sprLandscapeSize.x)/2) * fCurvature;
- 
-    int spriteX = (nScreenWidth-sprLandscapeSize.x)/2 + phase;
-    int spriteY = nScreenHeight/2 - sprLandscapeSize.y ;
-    
-    DrawPartialSprite(olc::vi2d(spriteX , spriteY), sprLandscapeRepeat.get(), olc::vi2d(0,0), sprLandscapeSize, 1);
-    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
-    
-    // Draw Track - Each row is split into grass, clip-board and track
-    for (int y = 0; y < ScreenHeight() / 2; y++)
-      for (int x = 0; x < ScreenWidth(); x++)
-      {
-        // Perspective is used to modify the width of the track row segments
-        float fPerspective = (float)y / (ScreenHeight()/2.0f);
-        float fRoadWidth = 0.1f + fPerspective * 0.8f; // Min 10% Max 90%
-        float fClipWidth = fRoadWidth * 0.15f;
-        fRoadWidth *= 0.5f;	// Halve it as track is symmetrical around center of track, but offset...
-
-        // ...depending on where the middle point is, which is defined by the current
-        // track curvature.
-        float fMiddlePoint = 0.5f + fCurvature * powf((1.0f - fPerspective), 3);
-
-        // Work out segment boundaries
-        int nLeftGrass = (fMiddlePoint - fRoadWidth - fClipWidth) * ScreenWidth();
-        int nLeftClip = (fMiddlePoint - fRoadWidth) * ScreenWidth();
-        int nRightClip = (fMiddlePoint + fRoadWidth) * ScreenWidth();
-        int nRightGrass = (fMiddlePoint + fRoadWidth + fClipWidth) * ScreenWidth();
-        
-        int nRow = ScreenHeight() / 2 + y;
-
-        // Using periodic oscillatory functions to give lines, where the phase is controlled
-        // by the distance around the track. These take some fine tuning to give the right "feel"
-        olc::Pixel nGrassColour = sinf(20.0f *  powf(1.0f - fPerspective,3) + fDistance * 0.1f) > 0.0f ? COLOR_GRASS_LIGHT : COLOR_GRASS_DARK;
-        olc::Pixel nClipColour = sinf(80.0f *  powf(1.0f - fPerspective, 2) + fDistance) > 0.0f ? olc::RED : olc::WHITE;
-        
-        // Start finish straight changes the road colour to inform the player lap is reset
-        olc::Pixel nRoadColour = (nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
-
-        // Draw the row segments
-        if (x >= 0 && x < nLeftGrass)
-          Draw(x, nRow, nGrassColour);
-        if (x >= nLeftGrass && x < nLeftClip)
-          Draw(x, nRow, nClipColour);
-        if (x >= nLeftClip && x < nRightClip)
-          Draw(x, nRow, nRoadColour);
-        if (x >= nRightClip && x < nRightGrass)
-          Draw(x, nRow, nClipColour);
-        if (x >= nRightGrass && x < ScreenWidth()) 
-          Draw(x, nRow, nGrassColour);
-      }
-
-    // Draw Car - car position on road is proportional to difference between
-    // current accumulated track curvature, and current accumulated player curvature
-    // i.e. if they are similar, the car will be in the middle of the track
-    //fCarPos = fPlayerCurvature - fTrackCurvature; 
-    
-    //DrZoid
-    //TODO: augmenter et decrementer  le playercurvature dans les virage pour que la voiture bouge de gauche a droite
-    //pour l'instant forcé a 0 -> reste centree et sur la courbure de la route
-    fCarPos = 0.0f;
-    fPlayerCurvature = fTrackCurvature;
-
-    int nCarPos = ScreenWidth() / 2 + ((int)(ScreenWidth() * fCarPos) / 2.0) - 40; // Offset for sprite
-
- 
-    //Draw a car that represents what the player is doing
-
-    //DrZoid: direction = current curvature
-    
-    nCarDirection = 0;
-    if (fCurvature < -0.1f) nCarDirection = -1;
-    if (fCurvature > +0.1f) nCarDirection = 1;
-
-    //TODO: uphill/downhill
-    bool bUpHill = false;
-    bool bDownHill = false;
-    
-    olc::vi2d vSpritePos = olc::vi2d(0,0);
-    switch (nCarDirection)
-    {
-      //left
-      case -1:
-        if(bDownHill) vSpritePos = olc::vi2d(8,0);
-        else if(bUpHill) vSpritePos = olc::vi2d(6,0);
-        else vSpritePos = olc::vi2d(7,0);
-      break;
-      //front
-      case 0:
-        if(bDownHill) vSpritePos = olc::vi2d(5,0);
-        else if(bUpHill) vSpritePos = olc::vi2d(3,0);
-        vSpritePos = olc::vi2d(4,0);
-      break;
-      //right
-      case 1:
-        if(bDownHill) vSpritePos = olc::vi2d(2,0);
-        else if(bUpHill) vSpritePos = olc::vi2d(0,0);
-        vSpritePos = olc::vi2d(1,0);
-      break;
-    }
-
-    //Draw the car sprite
-    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
-    DrawPartialSprite(olc::vi2d(nCarPos, nScreenHeight - (sprCarSize.y*2) - 8), sprCar.get(), vSpritePos * sprCarSize, sprCarSize, 2);
-    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
-    
-    // Draw Stats
-    auto text = "phase: " + to_string(phase);
-    auto text_size   = pixelFont->GetTextSizeProp( text );
-    
-    // Compute the centre points so we can rotate about them
-    auto text_centre      = text_size / 2.0f;
-    auto fScale                 = 1.0f;
-    
-    //pixelFont->DrawRotatedStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
-        
-    // DrZoid: c'est pas moi c'est GPT
-    // Draw circular mask
-    for (int y = 0; y < nScreenHeight; y++)
-    {
-        for (int x = 0; x < nScreenWidth; x++)
-        {
-            int nX = x - nScreenWidth / 2;
-            int nY = y - nScreenHeight / 2;
-            if (nX * nX + nY * nY > nRadius * nRadius)
-            {
-                // Draw black outside the circular screen
-                Draw(x, y, olc::BLACK);
-            }
-        }
-    }
+    // Update Game Logic
+    game.update(fElapsedTime);
+    DrawSky();
+    DrawLandscape();
+    DrawRoad();
+    DrawCar();
+    DrawDebug();
+    DrawMask();   // Draw circular mask
     return true;
   }
 };
 
 int main()
 {
-  RigoJauge game;
-  if (game.Construct(240, 240, 1, 1))
-    game.Start();
-
+  RigoJaugeRenderer renderer;
+  if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
+    renderer.Start();
   return 0;
 }
