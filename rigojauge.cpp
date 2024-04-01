@@ -192,7 +192,7 @@ private:
   olc::Pixel COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
   olc::Pixel COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
   olc::Pixel COLOR_RUMBLE = olc::RED;
-  olc::Pixel COLOR_ROAD = olc::Pixel(125,124,125);  //gray
+  olc::Pixel COLOR_ROAD = olc::Pixel(30,30,30); 
   olc::Pixel COLOR_SKY = olc::Pixel(20,87,141); //
 
   //sprites
