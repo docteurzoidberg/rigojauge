@@ -65,7 +65,7 @@ using namespace std;
 
 #define SCREEN_W 240
 #define SCREEN_H 240
-#define SCREEN_PIXELSIZE 2
+#define SCREEN_PIXELSIZE 1
 
 class RigoJauge
 {
@@ -87,11 +87,15 @@ public:
   }
 
   void start() {
-    bStarted = true; 
-    fSpeed = 1.0f;
+    bStarted = true;
   }
 
   void update(float fElapsedTime) {
+
+    if(bStarted) {
+      if(fSpeed<1.0f)
+        fSpeed += 0.1f * fElapsedTime;
+    }
 
     // Clamp Speed
     if (fSpeed < 0.0f)	fSpeed = 0.0f;
@@ -166,43 +170,56 @@ public:
   }
 
 private:  
+
   RigoJauge game;
   
   bool bShowDebug = false;
+  bool bDrawMask = true;  
+  bool bShowStartMessage = true;
+  
+  int nMaskRadius = std::min(SCREEN_W, SCREEN_H) / 2;
+  
+  //landscape phase & position
+  int phase = 0;
+  int landscapeX = 0;
+  int landscapeY = 0;    
+  
+  float fTargetFrameTime = 1.0f / 60.0f; // Virtual FPS of 100fps
+  float fAccumulatedTime = 0.0f;
+  float fNextToggleStarMessage = 0.5f;
 
+  //colors
   olc::Pixel COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
   olc::Pixel COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
   olc::Pixel COLOR_RUMBLE = olc::RED;
   olc::Pixel COLOR_ROAD = olc::Pixel(125,124,125);  //gray
   olc::Pixel COLOR_SKY = olc::Pixel(20,87,141); //
 
-  std::unique_ptr<olc::Font> pixelFont;
+  //sprites
+  std::unique_ptr<olc::Font> pixelFont24;
+  std::unique_ptr<olc::Font> pixelFont48;
+
   std::unique_ptr<olc::Sprite> sprCar;
   std::unique_ptr<olc::Sprite> sprPalmAnimation;
   std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
+
+  //sprite sizes
   olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
   olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
-
-  int nMaskRadius = std::min(SCREEN_W, SCREEN_H) / 2;
-  int phase = 0;
-  int landscapeX = 0;
-  int landscapeY = 0;
-
-  bool bDrawMask = true;
 
 protected:
   
   void DrawDebug() {
     if(!bShowDebug) return;
     // Draw Stats
-    auto text = "phase: " + to_string(phase);
-    auto text_size   = pixelFont->GetTextSizeProp( text );
+    auto text = "fAccumulatedTime: " + to_string(fAccumulatedTime);
+    auto text_size   = pixelFont24->GetTextSizeProp( text );
     
     // Compute the centre points so we can rotate about them
     auto text_centre      = text_size / 2.0f;
     auto fScale                 = 1.0f;
     
-    pixelFont->DrawRotatedStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
+    pixelFont24->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} );
   }
 
   void DrawSky() {
@@ -234,6 +251,7 @@ protected:
         // Perspective is used to modify the width of the track row segments
         float fPerspective = (float)y / (ScreenHeight()/2.0f);
         float fRoadWidth = 0.1f + fPerspective * 0.8f; // Min 10% Max 90%
+        float fLaneWidth = fRoadWidth * 0.5f;
         float fClipWidth = fRoadWidth * 0.15f;
         fRoadWidth *= 0.5f;	// Halve it as track is symmetrical around center of track, but offset...
 
@@ -244,6 +262,7 @@ protected:
         // Work out segment boundaries
         int nLeftGrass = (fMiddlePoint - fRoadWidth - fClipWidth) * ScreenWidth();
         int nLeftClip = (fMiddlePoint - fRoadWidth) * ScreenWidth();
+        //int nMidlane = (fMiddlePoint - fLaneWidth/2) * ScreenWidth();
         int nRightClip = (fMiddlePoint + fRoadWidth) * ScreenWidth();
         int nRightGrass = (fMiddlePoint + fRoadWidth + fClipWidth) * ScreenWidth();
         
@@ -257,12 +276,16 @@ protected:
         // Start finish straight changes the road colour to inform the player lap is reset
         olc::Pixel nRoadColour = (game.nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
 
+        olc::Pixel nLineColor = olc::WHITE;
+
         // Draw the row segments
         if (x >= 0 && x < nLeftGrass)
           Draw(x, nRow, nGrassColour);
         if (x >= nLeftGrass && x < nLeftClip)
           Draw(x, nRow, nClipColour);
-        if (x >= nLeftClip && x < nRightClip)
+        //if (x >= nLeftClip && x < nMidlane)
+          //Draw(x, nRow, olc::WHITE);
+        if(x>=nLeftClip && x < nRightClip)
           Draw(x, nRow, nRoadColour);
         if (x >= nRightClip && x < nRightGrass)
           Draw(x, nRow, nClipColour);
@@ -312,6 +335,33 @@ protected:
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
   }
 
+  void DrawStartMessage() {
+   
+    // Draw Start Message
+    auto text = "PRESS START";
+    auto text_size   = pixelFont48->GetTextSizeProp( text );
+    
+    // Compute the centre points so we can rotate about them
+    auto text_centre      = text_size / 2.0f;
+    auto fScale                 = 1.0f;
+    
+    //blink text every 3 seconds
+    if(fAccumulatedTime > fNextToggleStarMessage) {
+      if(bShowStartMessage) {
+        fNextToggleStarMessage = fAccumulatedTime + 0.5;
+        bShowStartMessage = false;
+      } else {
+        fNextToggleStarMessage = fAccumulatedTime + 0.5f;
+        bShowStartMessage = true;
+      }
+    }
+
+    if(bShowStartMessage)
+      pixelFont48->DrawRotatedStringPropDecal( {static_cast<float>(ScreenWidth()/2),static_cast<float>(ScreenHeight()/2 -20)}, text, 0, text_centre, olc::WHITE, {fScale, fScale} );
+    
+    //pixelFont48->DrawRotatedStringPropDecal( {static_cast<float>(ScreenWidth()/2),static_cast<float>(ScreenHeight()/2)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
+  }
+
   void DrawMask() {
     for (int y = 0; y < ScreenHeight(); y++)
     {
@@ -338,21 +388,27 @@ protected:
 	  sprCar = std::make_unique<olc::Sprite>("./sprites/car_color.png");
     sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/palm_animation1.png");
     sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/landscape_repeat2.png");
-    pixelFont = std::make_unique<olc::Font>( "./sprites/pixels_font.png" );
+    pixelFont24 = std::make_unique<olc::Font>( "./sprites/pixels_font_24.png" );
+    pixelFont48 = std::make_unique<olc::Font>( "./sprites/pixels_font_48.png" );
     return true;
   }
 
   // Called by olcConsoleGameEngine
   virtual bool OnUserUpdate(float fElapsedTime)
-  {
+  {  
     // Handle Input
     if (GetKey(olc::Key::D).bPressed)
       bShowDebug = !bShowDebug;
+    
     if(GetKey(olc::Key::M).bPressed)
       bDrawMask = !bDrawMask;
+    
     if (GetKey(olc::Key::SPACE).bPressed && !game.bStarted)
      game.start();
-    
+
+    // Accumulate elapsed time
+    fAccumulatedTime += fElapsedTime;
+
     //  if (m_keys[VK_UP].bHeld)
     //		fSpeed += 2.0f * fElapsedTime;
     //	else
@@ -377,7 +433,6 @@ protected:
     //if (fabs(fPlayerCurvature - fTrackCurvature) >= 0.8f) {
       //fSpeed -= 5.0f * fElapsedTime; 
     //}
-      
 
     // Update Game Logic
     game.update(fElapsedTime);
@@ -386,6 +441,7 @@ protected:
     DrawRoad();
     DrawCar();
     if(!game.bStarted) {
+      DrawStartMessage();
       //TODO: press start message
       //TODO: lap start flag sprite
       //TODO: side animations
