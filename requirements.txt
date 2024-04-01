@@ -1,0 +1,2 @@
+colourlovers==0.1.9
+Pillow>=7.1.0

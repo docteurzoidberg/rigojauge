@@ -4,21 +4,47 @@
 
 Update and install the compiler, related build tools, and libraries required to build PixelGameEngine applications.
 
-  sudo apt update
-  sudo apt install build-essential libglu1-mesa-dev libpng-dev
+ ```bash
+sudo apt update
+sudo apt install build-essential libglu1-mesa-dev libpng-dev libx11-dev libpng-dev
+``` 
 
 # Build & run
 
-  g++ -o rigo rigojauge.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17
-  ./rigo
-
-# Generate new font sprite png
-
-  python3 generatefont.py Arial.ttf 20
-
+ ```bash
+  make
+  ./rigojauge
+  ./testhills
+```
 
 # Controls
 
 M - toggle circular mask
+
 D - toggle debug infos
+
 SPACE - start game
+
+# Tools & samples
+
+## Generate new font sprite png
+
+Exemple to generate png sprite from arial.ttf:
+
+```bash
+  pip3 install requirements.txt
+  python3 generatefont.py Arial.ttf 20
+```
+
+## Landscape generator in python example
+
+Python 2D landscape generator using midpoint displacement.
+
+From https://github.com/juangallostra/Landscape-generator.git
+
+To read an in depth explanation visit this [blog entry](https://bitesofcode.wordpress.com/2016/12/23/landscape-generation-using-midpoint-displacement/).
+
+```bash
+pip3 install requirements.txt
+python3 generatelandscape.py
+```
