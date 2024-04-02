@@ -298,6 +298,13 @@ protected:
         if (x >= nRightGrass && x < ScreenWidth()) 
           Draw(x, nRow, nGrassColour);
       }
+      
+      //Draw the tree sprite (en dur partout)
+      int posX = 0;
+      int posY = y;
+      SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
+      DrawSprite({posX, posY}, sprPalmStatic.get(),1);
+      SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
     }
   }
 
@@ -338,13 +345,6 @@ protected:
     //Draw the car choosed sprite
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
     DrawPartialSprite(olc::vi2d(carSpriteX, carSpriteY), sprCar.get(), vSpritePos * sprCarSize, sprCarSize, 2);
-    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
-
-    //Draw the tree sprite
-    int posX = 0;
-    int posY = 0;
-    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
-    DrawSprite({posX, posY}, sprPalmStatic.get(),1);
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
   }
 
