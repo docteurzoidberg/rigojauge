@@ -202,6 +202,7 @@ private:
 
   std::unique_ptr<olc::Sprite> sprCar;
   std::unique_ptr<olc::Sprite> sprPalmAnimation;
+  std::unique_ptr<olc::Sprite> sprPalmStatic;
   std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
   std::unique_ptr<olc::Sprite> sprLapBanner;
 
@@ -209,6 +210,8 @@ private:
   olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
   olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
   olc::vi2d sprLapBannerSize = olc::vi2d( 180, 139 );
+  olc::vi2d sprPalmStaticSize = olc::vi2d( 52, 37 );
+
 
 protected:
   
@@ -398,6 +401,7 @@ protected:
     // Load the sprites
 	  sprCar = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/car.png");
     sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/palm_animation.png");
+    sprPalmStatic = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/palm_static1.png");
     sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/landscape.png");
     sprLapBanner = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/startfinish.png");
     pixelFont24 = std::make_unique<olc::Font>( "./sprites/" + sTheme + "/font_24.png" );

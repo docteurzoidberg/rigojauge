@@ -57,9 +57,9 @@ sudo apt install build-essential libglu1-mesa-dev libpng-dev libx11-dev libpng-d
 
  ```bash
   make
-  ./rigojauge
+  ./outrun
   ./testhills
-  ./tractor3d
+  ./tractocompass
 ```
 
 # Tools & other code samples
