@@ -279,11 +279,11 @@ protected:
         // by the distance around the track. These take some fine tuning to give the right "feel"
         olc::Pixel nGrassColour = sinf(20.0f *  powf(1.0f - fPerspective,3) + game.fDistance * 0.1f) > 0.0f ? COLOR_GRASS_LIGHT : COLOR_GRASS_DARK;
         olc::Pixel nClipColour = sinf(80.0f *  powf(1.0f - fPerspective, 2) + game.fDistance) > 0.0f ? COLOR_RUMBLE : olc::WHITE;
+        olc::Pixel nLaneColour = sinf(60.0f *  powf(1.0f - fPerspective, 2) + game.fDistance) > 0.0f ? COLOR_ROAD : olc::WHITE;
         
         // Start finish straight changes the road colour to inform the player lap is reset
-        olc::Pixel nRoadColour = (game.nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
-
-        olc::Pixel nLineColor = olc::WHITE;
+        //olc::Pixel nRoadColour = (game.nTrackSection-1) == 0 ? olc::WHITE : COLOR_ROAD;
+        olc::Pixel nRoadColour = COLOR_ROAD; // en dur
 
         if (x >= 0 && x < nLeftGrass)
           Draw(x, nRow, nGrassColour);
@@ -292,7 +292,7 @@ protected:
         if(x>=nLeftClip && x < nRightClip)
           Draw(x, nRow, nRoadColour);
         if (x >= nMidlaneLeft && x < nMidlaneRight) // changement ici
-          Draw(x, nRow, olc::WHITE); // changement ici
+          Draw(x, nRow, nLaneColour); // changement ici
         if (x >= nRightClip && x < nRightGrass)
           Draw(x, nRow, nClipColour);
         if (x >= nRightGrass && x < ScreenWidth()) 
