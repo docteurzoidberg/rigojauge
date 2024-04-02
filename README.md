@@ -1,12 +1,12 @@
 # Apps and tools
 
-## Rigojauge
+## Outrun
 
   A fake outrun like pseudo3d racing render of accelerometers inputs.
 
 ### Run
  ```bash
- ./rigojauge
+ ./outrun
  ```
 ### Controls
 
@@ -24,9 +24,14 @@ Testing a procedural landscape generation algorythm with four layers of backgrou
  ./testhills
  ```
 
-## Tractor3d
+## Tractocompass
 
 A fun compass using magnometer
+
+### Run
+ ```bash
+ ./tractocompass
+ ```
 
 ### Controls
 

@@ -22,19 +22,18 @@ public:
 
 private:  
 
-  int sprTractorFrameIndex=0;
+  int sprTractorFrameIndex=16;
 
   std::unique_ptr<olc::Font> pixelFont48;
   std::unique_ptr<olc::Sprite> sprTractor;
-  olc::vi2d sprTractorPos = {ScreenWidth()/2 - 164,ScreenHeight()/2 -200}; 
+  olc::vi2d sprTractorPos = {ScreenWidth()/2 - 78,ScreenHeight()/2 -56}; 
   olc::vi2d sprTractorSize = {78,78}; 
 
   float fAccumulatedTime = 0.0f;
-  float fTargetFrameTime = 60/1000.0f;
+  float fTargetFrameTime = 100/1000.0f;
 
   bool bDrawMask = true;
   int nMaskRadius = SCREEN_W / 2;
-
 
   float fWorldX = 800.0f;
 	float fWorldY = 800.0f;
@@ -45,6 +44,9 @@ private:
 
 	std::unique_ptr<olc::Sprite> sprGround;
 	std::unique_ptr<olc::Sprite> sprSky;
+  std::unique_ptr<olc::Sprite> sprCompass;
+
+  olc::vi2d sprCompassSize = {360,20};
 
 	int nMapSize = 1600;
 
@@ -68,6 +70,7 @@ private:
   virtual bool OnUserCreate()
   {
     sprGround = std::make_unique<olc::Sprite>("./sprites/map1.png");
+    sprCompass = std::make_unique<olc::Sprite>("./sprites/testcompass1.png");
     sprTractor = std::make_unique<olc::Sprite>("./sprites/tractor32.png");
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/default/font_48.png");
     return true;
@@ -166,33 +169,45 @@ private:
 			fWorldY -= sinf(fWorldA) * 0.2f * fElapsedTime;
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
     // Draw tractor sprite
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
     
-    DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(sprTractorFrameIndex,0)*sprTractorSize, sprTractorSize,4);
+    DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(16,0)*sprTractorSize, sprTractorSize,2);
+    DrawPartialSprite({sprTractorPos.x, 0},  sprTractor.get(), olc::vi2d(sprTractorFrameIndex,0)*sprTractorSize, sprTractorSize,.5);
+
+    //DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(sprTractorFrameIndex,0)*sprTractorSize, sprTractorSize,2);
+
 
     //map frame index (0 to 31) to a 360 compass direction
     auto fAngle = (180 + (static_cast<float>(sprTractorFrameIndex) / 32.0f)*360.0f) ;
     if(fAngle>360) fAngle-=360;
 
-    auto sAngleText = std::to_string((int)fAngle);
 
+    // Draw compass sprite
+    //compass sprite is 360 pixel wide. we need to offset it so the correct direction is shown in the middle of the screen.
+    //north is at 0, so for a 0 angle sprite should be at halh screen width.
+    
+    //calculate offset:
+    int nCompassOffset =(((static_cast<float>(sprTractorFrameIndex) / 32.0f)*360.0f)/360.0f)*sprCompassSize.x + ScreenWidth()/2 - sprCompassSize.x/2;
 
+    //repeat left if sprite offset > 0
+    if(nCompassOffset>0){
+      //calculate new offset
+      int nLeftCompassOffset = nCompassOffset-sprCompassSize.x;
+      DrawSprite( {nLeftCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+    }
+
+    //draw compass sprite
+    DrawSprite( {nCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+
+    //repeat right if sprite offset + sprite width < screen width
+    if(nCompassOffset+sprCompassSize.x<ScreenWidth()){
+      //calculate new offset
+      int nRightCompassOffset = nCompassOffset+sprCompassSize.x;
+      DrawSprite( {nRightCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+    }
+
+    auto sAngleText = std::to_string( (int)fAngle);
   
     auto sAngleTextSize   = pixelFont48->GetTextSizeProp( sAngleText );
     
@@ -203,15 +218,9 @@ private:
     //pixelFont24->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} ); 
 
     //draw centered horizontaly
-    pixelFont48->DrawStringPropDecal( {(float)(ScreenWidth()/2 - sAngleTextSize.x/2),static_cast<float>(ScreenHeight() - 40)}, sAngleText, olc::BLACK, {fScale, fScale} );
-  
-
+    pixelFont48->DrawStringPropDecal( {(float)(ScreenWidth()/2 - sAngleTextSize.x/2) +20,static_cast<float>(32)}, sAngleText, olc::BLACK, {fScale, fScale} );
 
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
-
-
-
-
 
     if(bDrawMask){
       DrawMask();
