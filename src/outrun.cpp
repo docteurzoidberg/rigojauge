@@ -268,7 +268,8 @@ protected:
         // Work out segment boundaries
         int nLeftGrass = (fMiddlePoint - fRoadWidth - fClipWidth) * ScreenWidth();
         int nLeftClip = (fMiddlePoint - fRoadWidth) * ScreenWidth();
-        //int nMidlane = (fMiddlePoint - fLaneWidth/2) * ScreenWidth();
+        int nMidlaneLeft = (fMiddlePoint - fRoadWidth * .05) * ScreenWidth();
+        int nMidlaneRight = (fMiddlePoint + fRoadWidth * .05) * ScreenWidth();
         int nRightClip = (fMiddlePoint + fRoadWidth) * ScreenWidth();
         int nRightGrass = (fMiddlePoint + fRoadWidth + fClipWidth) * ScreenWidth();
         
@@ -284,15 +285,14 @@ protected:
 
         olc::Pixel nLineColor = olc::WHITE;
 
-        // Draw the row segments
         if (x >= 0 && x < nLeftGrass)
           Draw(x, nRow, nGrassColour);
         if (x >= nLeftGrass && x < nLeftClip)
           Draw(x, nRow, nClipColour);
-        //if (x >= nLeftClip && x < nMidlane)
-          //Draw(x, nRow, olc::WHITE);
         if(x>=nLeftClip && x < nRightClip)
           Draw(x, nRow, nRoadColour);
+        if (x >= nMidlaneLeft && x < nMidlaneRight) // changement ici
+          Draw(x, nRow, olc::WHITE); // changement ici
         if (x >= nRightClip && x < nRightGrass)
           Draw(x, nRow, nClipColour);
         if (x >= nRightGrass && x < ScreenWidth()) 
@@ -338,6 +338,13 @@ protected:
     //Draw the car choosed sprite
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
     DrawPartialSprite(olc::vi2d(carSpriteX, carSpriteY), sprCar.get(), vSpritePos * sprCarSize, sprCarSize, 2);
+    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
+
+    //Draw the tree sprite
+    int posX = 0;
+    int posY = 0;
+    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
+    DrawSprite({posX, posY}, sprPalmStatic.get(),1);
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
   }
 
