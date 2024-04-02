@@ -188,23 +188,23 @@ private:
     //north is at 0, so for a 0 angle sprite should be at halh screen width.
     
     //calculate offset:
-    int nCompassOffset =(((static_cast<float>(sprTractorFrameIndex) / 32.0f)*360.0f)/360.0f)*sprCompassSize.x + ScreenWidth()/2 - sprCompassSize.x/2;
+    int nCompassOffset =(((static_cast<float>(sprTractorFrameIndex) / 32.0f)*360.0f)/360.0f)*sprCompassSize.x*2 + ScreenWidth()/2 - sprCompassSize.x;
 
     //repeat left if sprite offset > 0
     if(nCompassOffset>0){
       //calculate new offset
-      int nLeftCompassOffset = nCompassOffset-sprCompassSize.x;
-      DrawSprite( {nLeftCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+      int nLeftCompassOffset = nCompassOffset-sprCompassSize.x*2;
+      DrawSprite( {nLeftCompassOffset,ScreenHeight() - sprCompassSize.y*2},  sprCompass.get(),2);
     }
 
     //draw compass sprite
-    DrawSprite( {nCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+    DrawSprite( {nCompassOffset,ScreenHeight() - sprCompassSize.y*2},  sprCompass.get(),2);
 
     //repeat right if sprite offset + sprite width < screen width
-    if(nCompassOffset+sprCompassSize.x<ScreenWidth()){
+    if(nCompassOffset+sprCompassSize.x*2<ScreenWidth()){
       //calculate new offset
-      int nRightCompassOffset = nCompassOffset+sprCompassSize.x;
-      DrawSprite( {nRightCompassOffset,ScreenHeight() - sprCompassSize.y-20},  sprCompass.get());
+      int nRightCompassOffset = nCompassOffset+sprCompassSize.x*2;
+      DrawSprite( {nRightCompassOffset,ScreenHeight() - sprCompassSize.y},  sprCompass.get(),2);
     }
 
     auto sAngleText = std::to_string( (int)fAngle);
