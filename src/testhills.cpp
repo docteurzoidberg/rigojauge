@@ -3,7 +3,7 @@
 
 using namespace std;
 
-#include "olcPixelGameEngine.h"
+#include "../lib/olcPixelGameEngine.h"
 
 #define SCREEN_W 1000
 #define SCREEN_H 500

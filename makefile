@@ -2,12 +2,10 @@ CC = $(CXX)
 CXXFLAGS = -std=c++17
 LIBS = -lX11 -lGL -lpthread -lpng -lstdc++fs
 
-#Every cpp file in main folder = one binary and one object file
-#Every cpp file in tests folder = one binary and one object file
-#BINARIES = *.cpp minus extensions
+MAINOBJECTS = $(patsubst %.cpp,%.o,$(wildcard src/*.cpp))
+BINARIES = $(patsubst src/%.cpp,%,$(wildcard src/*.cpp))
 
-MAINOBJECTS = $(patsubst %.cpp,%.o,$(wildcard ./*.cpp))
-BINARIES = $(patsubst ./%.cpp,%,$(wildcard ./*.cpp))
+#source folder is src
 
 .PHONY: clean
 
@@ -18,8 +16,9 @@ clean:
 	rm -f $(BINARIES) $(MAINOBJECTS)
 
 $(BINARIES): $(MAINOBJECTS)
-	$(CC) $(CXXFLAGS) -o $@ $(patsubst %,%.o,$@) $(LIBS)
+#output binary files to root directory
+	$(CC) $(CXXFLAGS) src/$@.o -o ./$@ $(LIBS)
 
-#output ./*.cpp and tests/*.cpp object output files to root directory. replace test/file.o to file.o
+#compile each object file to root directory
 %.o: %.cpp
-	$(CC) $(CXXFLAGS) -c $< -o $(patsubst tests/%,%, $(patsubst ./%,%, $@))
+	$(CC) -o $@ $(CXXFLAGS) -c $<

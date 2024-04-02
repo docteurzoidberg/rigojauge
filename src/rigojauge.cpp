@@ -58,10 +58,10 @@ https://youtu.be/KkMZI5Jbf18
 #include <string>
 using namespace std;
 
-#include "olcPixelGameEngine.h"
+#include "../lib/olcPixelGameEngine.h"
 
 #define OLC_PGEX_FONT
-#include "olcPGEX_Font.h"
+#include "../lib/olcPGEX_Font.h"
 
 #define SCREEN_W 240
 #define SCREEN_H 240
@@ -160,18 +160,19 @@ private:
   
 };
 
-
 class RigoJaugeRenderer : public olc::PixelGameEngine
 {
 public:
-  RigoJaugeRenderer()
+  RigoJaugeRenderer(string theme="default")
   {
     sAppName = "Rigojauge2000";
+    sTheme = theme;
   }
 
 private:  
 
   RigoJauge game;
+  string sTheme;
   
   bool bShowDebug = false;
   bool bDrawMask = true;  
@@ -202,10 +203,12 @@ private:
   std::unique_ptr<olc::Sprite> sprCar;
   std::unique_ptr<olc::Sprite> sprPalmAnimation;
   std::unique_ptr<olc::Sprite> sprLandscapeRepeat;
+  std::unique_ptr<olc::Sprite> sprLapBanner;
 
   //sprite sizes
   olc::vi2d sprCarSize = olc::vi2d( 40, 29 );
   olc::vi2d sprLandscapeSize = olc::vi2d( 585, 86 );
+  olc::vi2d sprLapBannerSize = olc::vi2d( 180, 139 );
 
 protected:
   
@@ -357,9 +360,17 @@ protected:
     }
 
     if(bShowStartMessage)
-      pixelFont48->DrawRotatedStringPropDecal( {static_cast<float>(ScreenWidth()/2),static_cast<float>(ScreenHeight()/2 -20)}, text, 0, text_centre, olc::WHITE, {fScale, fScale} );
+      pixelFont48->DrawRotatedStringPropDecal( {static_cast<float>(ScreenWidth()/2),static_cast<float>(ScreenHeight()/2 -10)}, text, 0, text_centre, olc::WHITE, {fScale, fScale} );
     
     //pixelFont48->DrawRotatedStringPropDecal( {static_cast<float>(ScreenWidth()/2),static_cast<float>(ScreenHeight()/2)}, text, 0, text_centre, olc::MAGENTA, {fScale, fScale} );
+  }
+
+  void DrawLapBanner() {
+    // Draw Lap Banner sprite
+    olc::vi2d vSpritePos = olc::vi2d((ScreenWidth()-sprLapBannerSize.x)/2,ScreenHeight()-sprLapBannerSize.y-54);
+    SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
+    DrawSprite(vSpritePos, sprLapBanner.get());
+    SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
   }
 
   void DrawMask() {
@@ -385,11 +396,24 @@ protected:
     game = RigoJauge();
 
     // Load the sprites
-	  sprCar = std::make_unique<olc::Sprite>("./sprites/car_color.png");
-    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/palm_animation1.png");
-    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/landscape_repeat2.png");
-    pixelFont24 = std::make_unique<olc::Font>( "./sprites/pixels_font_24.png" );
-    pixelFont48 = std::make_unique<olc::Font>( "./sprites/pixels_font_48.png" );
+	  sprCar = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/car.png");
+    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/palm_animation.png");
+    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/landscape.png");
+    sprLapBanner = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/startfinish.png");
+    pixelFont24 = std::make_unique<olc::Font>( "./sprites/" + sTheme + "/font_24.png" );
+    pixelFont48 = std::make_unique<olc::Font>( "./sprites/" + sTheme + "/font_48.png" );
+
+    //overwrite sprite sizes and colors
+    if (sTheme=="1bit") {
+      COLOR_GRASS_DARK = olc::Pixel(15,143,137);  //dark green
+      COLOR_GRASS_LIGHT = olc::Pixel(51,181,136); //lighter green
+      COLOR_RUMBLE = olc::RED;
+      COLOR_ROAD = olc::Pixel(30,30,30);
+      COLOR_SKY = olc::Pixel(20,87,141);
+      sprCarSize = olc::vi2d( 40, 29 );
+      sprLandscapeSize = olc::vi2d( 585, 86 );
+      sprLapBannerSize = olc::vi2d( 180, 139 );
+    }
     return true;
   }
 
@@ -442,6 +466,7 @@ protected:
     DrawCar();
     if(!game.bStarted) {
       DrawStartMessage();
+      DrawLapBanner();
       //TODO: press start message
       //TODO: lap start flag sprite
       //TODO: side animations
@@ -455,7 +480,8 @@ protected:
 
 int main()
 {
-  RigoJaugeRenderer renderer;
+  auto theme="default";
+  RigoJaugeRenderer renderer(theme);
   if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
     renderer.Start();
   return 0;

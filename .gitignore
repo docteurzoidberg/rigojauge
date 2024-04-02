@@ -1,3 +1,4 @@
-*.o
+**/*.o
 rigojauge
 testhills
+tractor3d

@@ -1,3 +1,43 @@
+# Apps and tools
+
+## Rigojauge
+
+  A fake outrun like pseudo3d racing render of accelerometers inputs.
+
+### Run
+ ```bash
+ ./rigojauge
+ ```
+### Controls
+
+  M - toggle circular mask
+
+  D - toggle debug infos
+
+  SPACE - start game
+
+## Testhills
+
+Testing a procedural landscape generation algorythm with four layers of background hill
+
+ ```bash
+ ./testhills
+ ```
+
+## Tractor3d
+
+A fun compass using magnometer
+
+### Controls
+
+Q
+A
+S
+Z
+X
+UP/DOWN
+LEFT/RIGHT
+
 # Installation
 
 ## Ubuntu 20.04 and distros based on Ubuntu 20.04
@@ -8,24 +48,16 @@ Update and install the compiler, related build tools, and libraries required to 
 sudo apt update
 sudo apt install build-essential libglu1-mesa-dev libpng-dev libx11-dev libpng-dev
 ``` 
-
 # Build & run
 
  ```bash
   make
   ./rigojauge
   ./testhills
+  ./tractor3d
 ```
 
-# Controls
-
-M - toggle circular mask
-
-D - toggle debug infos
-
-SPACE - start game
-
-# Tools & samples
+# Tools & other code samples
 
 ## Generate new font sprite png
 
