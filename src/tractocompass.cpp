@@ -37,7 +37,6 @@ private:
 	float fFar = 0.03f;
 	float fFoVHalf = 3.14159f / 4.0f; 
 
-
   std::unique_ptr<olc::Font> pixelFont48;
   
   std::unique_ptr<olc::Sprite> sprTractor;
@@ -47,7 +46,6 @@ private:
   std::unique_ptr<olc::Sprite> sprSign;
   std::unique_ptr<olc::Sprite> sprSignDirections;
 
-
   olc::vi2d sprTractorPos = {(SCREEN_W/2) - 78,(SCREEN_H/2) -56}; 
   olc::vi2d sprTractorSize = {78,78}; 
 
@@ -56,8 +54,7 @@ private:
   olc::vi2d sprSignSize = {130,72};
   olc::vi2d sprSignPos = olc::vi2d({(SCREEN_W/2) - sprSignSize.x/2,0});
 
-  olc::vi2d sprSignMiniTractorPos = sprSignPos + olc::vi2d({56,0});
-
+  olc::vi2d signMiniTractorPos = sprSignPos + olc::vi2d({56,0});
   olc::vi2d signBackgroundPos = sprSignPos + olc::vi2d({2,24});  
   olc::vi2d signBackgroundSize = {126,47};
   olc::vi2d signDirectionSpriteSize = {47,17};
@@ -164,7 +161,7 @@ private:
     DrawSprite(sprSignPos,  sprSign.get(),1);
 
     //Tracteur qui tourne
-    DrawPartialSprite(sprSignMiniTractorPos,  sprTractor.get(), olc::vi2d(sprTractorFrameIndex,0)*sprTractorSize, sprTractorSize, 1);
+    DrawPartialSprite(signMiniTractorPos,  sprTractor.get(), olc::vi2d(sprTractorFrameIndex,0)*sprTractorSize, sprTractorSize, 1);
 
     //draw direction text
     DrawPartialSprite(signDirectionTextPos,  sprSignDirections.get(), signDirectionSpriteIndex * signDirectionSpriteSize,signDirectionSpriteSize);
