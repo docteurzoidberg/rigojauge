@@ -1,4 +1,5 @@
 **/*.o
+!sprites/tractocompass
 outrun
 testhills
 tractocompass
