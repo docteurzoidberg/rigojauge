@@ -43,6 +43,17 @@ X
 UP/DOWN
 LEFT/RIGHT
 
+## Xlevel
+
+A fun level themable level indicator
+
+### Run
+ ```bash
+ ./xlevel
+ ```
+### Controls
+TODO
+
 # Installation
 
 ## Ubuntu 20.04 and distros based on Ubuntu 20.04
@@ -56,10 +67,10 @@ sudo apt install build-essential libglu1-mesa-dev libpng-dev libx11-dev libpng-d
 # Build & run
 
  ```bash
-  make
-  ./outrun
-  ./testhills
-  ./tractocompass
+make
+./outrun
+./testhills
+./tractocompass
 ```
 
 # Tools & other code samples
@@ -69,19 +80,29 @@ sudo apt install build-essential libglu1-mesa-dev libpng-dev libx11-dev libpng-d
 Exemple to generate png sprite from arial.ttf:
 
 ```bash
-  pip3 install requirements.txt
-  python3 generatefont.py Arial.ttf 20
+pip3 install requirements.txt
+python3 tools/generatefont.py Arial.ttf 20
 ```
-
 ## Landscape generator in python example
 
 Python 2D landscape generator using midpoint displacement.
 
-From https://github.com/juangallostra/Landscape-generator.git
+From https://github.com/juangallostra/Landscape-generator
 
 To read an in depth explanation visit this [blog entry](https://bitesofcode.wordpress.com/2016/12/23/landscape-generation-using-midpoint-displacement/).
 
 ```bash
 pip3 install requirements.txt
-python3 generatelandscape.py
+python3 tools/generatelandscape.py
+```
+
+## Voxel to png
+
+Tool to convert Magicavoxel files and output png for sprite stacking.
+Taken from https://github.com/jemisa/vox2png
+
+```bash
+cd tools/vox2png
+gcc -o vox2png vox2png.c
+./vox2png voxels.vox output.png
 ```
