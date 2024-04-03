@@ -406,13 +406,13 @@ protected:
     game = RigoJauge();
 
     // Load the sprites
-	  sprCar = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/car.png");
-    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/palm_animation.png");
-    sprPalmStatic = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/palm_static1.png");
-    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/landscape.png");
-    sprLapBanner = std::make_unique<olc::Sprite>("./sprites/" + sTheme + "/startfinish.png");
-    pixelFont24 = std::make_unique<olc::Font>( "./sprites/" + sTheme + "/font_24.png" );
-    pixelFont48 = std::make_unique<olc::Font>( "./sprites/" + sTheme + "/font_48.png" );
+	  sprCar = std::make_unique<olc::Sprite>("./sprites/outrun/" + sTheme + "/car.png");
+    sprPalmAnimation = std::make_unique<olc::Sprite>("./sprites/outrun/" + sTheme + "/palm_animation.png");
+    sprPalmStatic = std::make_unique<olc::Sprite>("./sprites/outrun/" + sTheme + "/palm_static1.png");
+    sprLandscapeRepeat = std::make_unique<olc::Sprite>("./sprites/outrun/" + sTheme + "/landscape.png");
+    sprLapBanner = std::make_unique<olc::Sprite>("./sprites/outrun/" + sTheme + "/startfinish.png");
+    pixelFont24 = std::make_unique<olc::Font>( "./sprites/outrun/" + sTheme + "/font_24.png" );
+    pixelFont48 = std::make_unique<olc::Font>( "./sprites/outrun/" + sTheme + "/font_48.png" );
 
     //overwrite sprite sizes and colors
     if (sTheme=="1bit") {
