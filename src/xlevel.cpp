@@ -28,10 +28,12 @@ private:
   int nMaskRadius = SCREEN_W / 2;
 
   std::unique_ptr<olc::Font> pixelFont48;
-  std::unique_ptr<olc::Sprite> sprTractor;
+  std::unique_ptr<olc::Sprite> sprDelorean; //delorean sprite sheet
   
-  olc::vi2d sprTractorPos = {(SCREEN_W/2) - 78,(SCREEN_H/2) -56}; 
-  olc::vi2d sprTractorSize = {78,78}; 
+  
+  olc::vi2d sprDeloreanSize = {85,45}; 
+  olc::vi2d sprDeloreanPos = {(SCREEN_W/2) - sprDeloreanSize.x,(SCREEN_H/2) -sprDeloreanSize.y}; 
+  
 
   void DrawMask() {
     for (int y = 0; y < SCREEN_H; y++) {
@@ -42,10 +44,11 @@ private:
       }
     }
   }
+
   virtual bool OnUserCreate()
   {
-    sprTractor = std::make_unique<olc::Sprite>("./sprites/xlevel/delorean/plane.png");
-    pixelFont48 = std::make_unique<olc::Font>( "./sprites/xlevel/delorean/font_48.png");
+    pixelFont48 = std::make_unique<olc::Font>( "./sprites/xlevel/font_48.png");
+    sprDelorean = std::make_unique<olc::Sprite>("./sprites/xlevel/delorean_spritesheet1.png");
     return true;
   }
 
@@ -53,7 +56,7 @@ private:
   {
     fAccumulatedTime += fElapsedTime;
 
-    Clear(olc::BLACK);
+    Clear(olc::CYAN);
 
     //input to toggle mask
     if (GetKey(olc::Key::M).bPressed)
@@ -63,7 +66,7 @@ private:
   
     // Draw tractor sprite
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
-    DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(16,0)*sprTractorSize, sprTractorSize,2);
+    DrawPartialSprite({sprDeloreanPos},  sprDelorean.get(), olc::vi2d(4,0) * sprDeloreanSize, sprDeloreanSize, 2);
     SetPixelMode(olc::Pixel::NORMAL); // Draw all pixels
 
     //draw circle mask
