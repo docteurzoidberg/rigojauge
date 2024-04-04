@@ -106,3 +106,22 @@ cd tools/vox2png
 gcc -o vox2png vox2png.c
 ./vox2png voxels.vox output.png
 ```
+
+
+# Outrun from "Let's make 16 games in C++" video series
+
+Let's make 16 games in C++: Outrun (Pseudo 3d racing)
+https://www.youtube.com/watch?v=N60lBZDEwJ8
+
+code of all games can be found in examples/ folder
+
+outrun code is in "examples/16_Games/08 Outrun" folder
+
+/!\ requires libSFML
+
+```bash
+  sudo apt install libsfml-dev
+  cd "examples/16_Games/08 Outrun"   
+  make
+  ./outrun
+```
