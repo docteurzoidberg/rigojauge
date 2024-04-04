@@ -1,6 +1,7 @@
 **/*.o
-!sprites/**
 testhills
 tractocompass
-xlevel
 outrun
+outrun2
+xlevel
+!sprites/*
