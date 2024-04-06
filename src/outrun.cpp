@@ -218,7 +218,7 @@ protected:
   void DrawDebug() {
     if(!bShowDebug) return;
     // Draw Stats
-    auto text = "fAccumulatedTime: " + to_string(fAccumulatedTime);
+    auto text = "fCarPos: " + to_string(game.fCarPos);
     auto text_size   = pixelFont24->GetTextSizeProp( text );
     
     // Compute the centre points so we can rotate about them
@@ -238,7 +238,7 @@ protected:
 
   void DrawLandscape() {
     // Calculate the phase based on track curvature and x position
-    phase = (int) ((ScreenWidth()-sprLandscapeSize.x)/2) * game.fCurvature;
+    phase = (int) ((ScreenWidth()-sprLandscapeSize.x)/2) * game.fCurvature/2;
     landscapeX = (ScreenWidth()-sprLandscapeSize.x)/2 + phase;
     landscapeY = ScreenHeight()/2 - sprLandscapeSize.y ;
   
@@ -248,7 +248,7 @@ protected:
   }
 
   void DrawRoad() {
-    
+
     // Draw Track - Each row is split into grass, clip-board and track
     for (int y = 0; y < ScreenHeight() / 2; y++) 
     {

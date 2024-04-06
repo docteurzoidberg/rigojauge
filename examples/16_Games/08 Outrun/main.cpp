@@ -2,11 +2,11 @@
 #include <cmath>
 using namespace sf;
 
-int width = 1024;
-int height = 768;
-int roadW = 2000;
-int segL = 200; //segment length
-float camD = 0.84; //camera depth
+int width = 240;
+int height = 240;
+int roadW = 1000;
+int segL = 100; //segment length
+float camD = 0.70; //camera depth
 
 void drawQuad(RenderWindow &w, Color c, int x1,int y1,int w1,int x2,int y2,int w2)
 {
@@ -94,11 +94,11 @@ int main()
        if (i>300 && i<700) line.curve=0.5;
        if (i>1100) line.curve=-0.7;
 
-       if (i<300 && i%20==0) {line.spriteX=-2.5; line.sprite=object[5];}
-       if (i%17==0)          {line.spriteX=2.0; line.sprite=object[6];}
+       if (i<300 && i%20==0) {line.spriteX=-1.5; line.sprite=object[5];}
+       if (i%17==0)          {line.spriteX=1.0; line.sprite=object[6];}
        if (i>300 && i%20==0) {line.spriteX=-0.7; line.sprite=object[4];}
-       if (i>800 && i%20==0) {line.spriteX=-1.2; line.sprite=object[1];}
-       if (i==400)           {line.spriteX=-1.2; line.sprite=object[7];}
+       if (i>800 && i%20==0) {line.spriteX=-0.2; line.sprite=object[1];}
+       if (i==400)           {line.spriteX=-0.2; line.sprite=object[7];}
 
        if (i>750) line.y = sin(i/30.0)*1500;
 
@@ -108,7 +108,7 @@ int main()
    int N = lines.size();
    float playerX = 0;
    int pos = 0;
-   int H = 1500;
+   int H = 600;
 
     while (app.isOpen())
     {
@@ -123,13 +123,13 @@ int main()
 
   if (Keyboard::isKeyPressed(Keyboard::Right)) playerX+=0.1;
   if (Keyboard::isKeyPressed(Keyboard::Left)) playerX-=0.1;
-  if (Keyboard::isKeyPressed(Keyboard::Up)) speed=200;
-  if (Keyboard::isKeyPressed(Keyboard::Down)) speed=-200;
+  if (Keyboard::isKeyPressed(Keyboard::Up)) speed=100;
+  if (Keyboard::isKeyPressed(Keyboard::Down)) speed=-100;
   if (Keyboard::isKeyPressed(Keyboard::Tab)) speed*=3;
   if (Keyboard::isKeyPressed(Keyboard::W)) H+=100;
   if (Keyboard::isKeyPressed(Keyboard::S)) H-=100;
 
-  pos+=speed;
+  pos+=75;
   while (pos >= N*segL) pos-=N*segL;
   while (pos < 0) pos += N*segL;
 
@@ -156,14 +156,20 @@ int main()
     maxy = l.Y;
 
     Color grass  = (n/3)%2?Color(16,200,16):Color(0,154,0);
-    Color rumble = (n/3)%2?Color(255,255,255):Color(0,0,0);
-    Color road   = (n/3)%2?Color(107,107,107):Color(105,105,105);
+    Color rumble = (n/1)%2?Color(255,255,255):Color(255,0,0);
+    Color road   = Color(30,30,30);
+    Color lane   = (n*3)%2?Color(30,30,30):Color(255,255,255);
 
     Line p = lines[(n-1)%N]; //previous line
 
     drawQuad(app, grass, 0, p.Y, width, 0, l.Y, width);
     drawQuad(app, rumble,p.X, p.Y, p.W*1.2, l.X, l.Y, l.W*1.2);
+  
+
     drawQuad(app, road,  p.X, p.Y, p.W, l.X, l.Y, l.W);
+        //lane is 10 percent the road size. centered
+    drawQuad(app,lane, p.X,p.Y,p.W*0.06, l.X,l.Y,l.W*0.06);
+
    }
 
     ////////draw objects////////

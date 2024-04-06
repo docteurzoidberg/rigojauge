@@ -1,11 +1,12 @@
 
+#include <iostream>
 #define OLC_PGE_APPLICATION
 
 using namespace std;
 
 #include "../lib/olcPixelGameEngine.h"
 
-#define SCREEN_W 2000
+#define SCREEN_W 500
 #define SCREEN_H 240
 #define SCREEN_PIXELSIZE 1
 
@@ -98,29 +99,21 @@ private:
         }
       }
       //DOUTE: faut il pas boucler et remplir un tableau 1d?
+      sampled_layer.push_back(layer[layer.size() - 1]);
       final_layers.push_back(sampled_layer);
     }
 
     for (int i = 0; i < final_layers.size(); ++i) {
-      std::vector<std::pair<int, int>> final_layer = final_layers[i];
-      for (int x = 0; x < final_layers[1].size()-1;x++) {
-        olc::vi2d p1 = {
-          final_layers[1][x].first,
-          landscape.height - final_layers[1][x].second
-        };
-        olc::vi2d p2 = {
-          final_layers[1][x].second,
-          landscape.height 
-        };
-        DrawLine(p1, p2,colour_palette[i]);
+      auto& layer = final_layers[i];
+      //console layer size
+      std::cout << "Layer size: " << layer.size() << std::endl;
+      for(int x = 0; x < layer.size(); ++x) {
+        DrawLine(olc::vi2d{layer[x].first, landscape.height - layer[x].second}, olc::vi2d{layer[x].first, landscape.height}, colour_palette[i]);
       }
-    }
+    } 
 
-
-
-
-      /*
-       final_layers = []
+    /* from python:
+    final_layers = []
     for layer in layers:
         sampled_layer = []
         for i in range(len(layer) - 1):
@@ -156,14 +149,9 @@ private:
                 ),
                 colour_dict[str(final_layer[0])],
             )
-      */
-
-
-    
+    */
   }
 
-
-  
   virtual bool OnUserCreate()
   {
     seed = time(nullptr);
@@ -186,14 +174,7 @@ private:
   virtual bool OnUserUpdate(float fElapsedTime)
   {
     Clear(olc::BLACK);
-
-
-
-
     drawLayers(colorPalette);
-
-
-
     return true;
   }
 };
