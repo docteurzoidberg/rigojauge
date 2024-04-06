@@ -5,8 +5,8 @@ using namespace std;
 
 #include "../lib/olcPixelGameEngine.h"
 
-#define SCREEN_W 1000
-#define SCREEN_H 500
+#define SCREEN_W 2000
+#define SCREEN_H 240
 #define SCREEN_PIXELSIZE 1
 
 #include <string>
@@ -73,35 +73,127 @@ private:
   void drawLayers(std::vector<olc::Pixel> colour_palette) {
     // Draw the sun
     //DrawEllipse(50, 25, 100, 75, 255, 255, 255);
-    DrawCircle(olc::vi2d(50, 25), 0.08f*SCREEN_W, olc::Pixel(255, 255, 255));
+    FillCircle(olc::vi2d(50, 25), 0.08f*SCREEN_W, olc::Pixel(255, 255, 255));
+    
+    
+    std::vector<std::vector<std::pair<int, int>>> final_layers = {};
+
+
     for (size_t i = 0; i < landscape.layers.size(); ++i) {
-      drawLayer(landscape.layers[i], colour_palette[i]);
+      
+      olc::Pixel colour = colour_palette[i];
+      std::vector<std::pair<int, int>> layer = landscape.layers[i];
+      std::vector<std::pair<int, int>> sampled_layer;
+
+      for (size_t j = 0; j < layer.size() - 1; ++j) {
+        
+        sampled_layer.push_back(layer[j]);
+        if (layer[j + 1].first - layer[j].first > 1) {
+          double m = (double)(layer[j + 1].second - layer[j].second) / (layer[j + 1].first - layer[j].first);
+          double n = layer[j].second - m * layer[j].first;
+          auto r = [m, n](int x) { return m * x + n; };
+          for (int k = layer[j].first + 1; k < layer[j + 1].first; ++k) {
+            sampled_layer.push_back(std::make_pair(k, r(k)));
+          }
+        }
+      }
+      //DOUTE: faut il pas boucler et remplir un tableau 1d?
+      final_layers.push_back(sampled_layer);
     }
+
+    for (int i = 0; i < final_layers.size(); ++i) {
+      std::vector<std::pair<int, int>> final_layer = final_layers[i];
+      for (int x = 0; x < final_layers[1].size()-1;x++) {
+        olc::vi2d p1 = {
+          final_layers[1][x].first,
+          landscape.height - final_layers[1][x].second
+        };
+        olc::vi2d p2 = {
+          final_layers[1][x].second,
+          landscape.height 
+        };
+        DrawLine(p1, p2,colour_palette[i]);
+      }
+    }
+
+
+
+
+      /*
+       final_layers = []
+    for layer in layers:
+        sampled_layer = []
+        for i in range(len(layer) - 1):
+            sampled_layer += [layer[i]]
+            # If x difference is greater than 1
+            if layer[i + 1][0] - layer[i][0] > 1:
+                # Linearly sample the y values in the range x_[i+1]-x_[i]
+                # This is done by obtaining the equation of the straight
+                # line (in the form of y=m*x+n) that connects two consecutive
+                # points
+                m = float(layer[i + 1][1] - layer[i][1]) / (
+                    layer[i + 1][0] - layer[i][0]
+                )
+                n = layer[i][1] - m * layer[i][0]
+                r = lambda x: m * x + n  # straight line
+                for j in range(
+                    int(layer[i][0] + 1), int(layer[i + 1][0])
+                ):  # for all missing x
+                    sampled_layer += [[j, r(j)]]  # Sample points
+        final_layers += [sampled_layer]
+
+    final_layers_enum = enumerate(final_layers)
+    for final_layer in final_layers_enum:
+        # traverse all x values in the layer
+        for x in range(len(final_layer[1]) - 1):
+            # for each x value draw a line from its y value to the bottom
+            landscape_draw.line(
+                (
+                    final_layer[1][x][0],
+                    height - final_layer[1][x][1],
+                    final_layer[1][x][0],
+                    height,
+                ),
+                colour_dict[str(final_layer[0])],
+            )
+      */
+
+
+    
   }
 
-  void drawLayer(std::vector<std::pair<int, int>>& layer, olc::Pixel color) {
-    // Sample the y values of all x in image
-    for (size_t i = 0; i < layer.size() - 1; ++i) {
-      //DrawLine(layer[i].first, landscape.height - layer[i].second, layer[i + 1].first, landscape.height - layer[i + 1].second, color.r, color.g, color.b);
-      DrawLine(olc::vi2d(layer[i].first, landscape.height - layer[i].second), olc::vi2d(layer[i + 1].first, landscape.height - layer[i + 1].second), color);
-    }
-  }
+
   
   virtual bool OnUserCreate()
   {
     seed = time(nullptr);
     srand(static_cast<unsigned int>(seed));
-    landscape.midpointDisplacement(std::make_pair(250, 0), std::make_pair(landscape.width, 200), 1.4, 20, 12);
-    landscape.midpointDisplacement(std::make_pair(0, 180), std::make_pair(landscape.width, 80), 1.2, 30, 12);
-    landscape.midpointDisplacement(std::make_pair(0, 270), std::make_pair(landscape.width, 190), 1, 120, 9);
-    landscape.midpointDisplacement(std::make_pair(0, 350), std::make_pair(landscape.width, 320), 0.9, 250, 8);
+    landscape.midpointDisplacement(std::make_pair(250, 0), std::make_pair(landscape.width, 200), 1.4, .04*landscape.height, 12);
+    landscape.midpointDisplacement(std::make_pair(0, .36*landscape.height), std::make_pair(landscape.width, .16*landscape.height), 1.2, .06*landscape.height, 12);
+    landscape.midpointDisplacement(std::make_pair(0, .54*landscape.height), std::make_pair(landscape.width, .38*landscape.height), 1, .24*landscape.height, 9);
+    landscape.midpointDisplacement(std::make_pair(0, .70*landscape.height), std::make_pair(landscape.width, .64*landscape.height), 0.9, .50*landscape.height, 8); 
+
+
+    //# Compute different layers of the landscape
+    //layer_1 = midpoint_displacement([250, 0], [width, .4*height], 1.4, .04*height, 12)
+    //layer_2 = midpoint_displacement([0, .36*height], [width, .16*height], 1.2, .06*height, 12)
+    //layer_3 = midpoint_displacement([0, .54*height], [width, .38*height], 1, .24*height, 9)
+    //layer_4 = midpoint_displacement([0, .7*height], [width, .64*height], 0.9, .5*height, 8)
+
     return true;
   }
 
   virtual bool OnUserUpdate(float fElapsedTime)
   {
     Clear(olc::BLACK);
+
+
+
+
     drawLayers(colorPalette);
+
+
+
     return true;
   }
 };
