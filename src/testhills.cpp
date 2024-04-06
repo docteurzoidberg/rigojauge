@@ -48,7 +48,6 @@ public:
     layers.push_back(points);
   }
 };
-
 class TestRenderer : public olc::PixelGameEngine
 {
 public:
@@ -157,23 +156,15 @@ private:
     seed = time(nullptr);
     srand(static_cast<unsigned int>(seed));
     landscape.midpointDisplacement(std::make_pair(250, 0), std::make_pair(landscape.width, 200), 1.4, .04*landscape.height, 12);
-    landscape.midpointDisplacement(std::make_pair(0, .36*landscape.height), std::make_pair(landscape.width, .16*landscape.height), 1.2, .06*landscape.height, 12);
-    landscape.midpointDisplacement(std::make_pair(0, .54*landscape.height), std::make_pair(landscape.width, .38*landscape.height), 1, .24*landscape.height, 9);
     landscape.midpointDisplacement(std::make_pair(0, .70*landscape.height), std::make_pair(landscape.width, .64*landscape.height), 0.9, .50*landscape.height, 8); 
-
-
-    //# Compute different layers of the landscape
-    //layer_1 = midpoint_displacement([250, 0], [width, .4*height], 1.4, .04*height, 12)
-    //layer_2 = midpoint_displacement([0, .36*height], [width, .16*height], 1.2, .06*height, 12)
-    //layer_3 = midpoint_displacement([0, .54*height], [width, .38*height], 1, .24*height, 9)
-    //layer_4 = midpoint_displacement([0, .7*height], [width, .64*height], 0.9, .5*height, 8)
-
+    landscape.midpointDisplacement(std::make_pair(0, .54*landscape.height), std::make_pair(landscape.width, .38*landscape.height), 1, .24*landscape.height, 9);
+    landscape.midpointDisplacement(std::make_pair(0, .36*landscape.height), std::make_pair(landscape.width, .16*landscape.height), 1.2, .06*landscape.height, 12);
     return true;
   }
 
   virtual bool OnUserUpdate(float fElapsedTime)
   {
-    Clear(olc::BLACK);
+    Clear(colorPalette[colorPalette.size() - 1]);
     drawLayers(colorPalette);
     return true;
   }

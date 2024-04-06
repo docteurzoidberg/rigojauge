@@ -18,7 +18,7 @@
 
 ## Testhills
 
-Testing a procedural landscape generation algorythm with four layers of background hill
+Testing a procedural landscape generation algorithm with four layers of background hill
 
  ```bash
  ./testhills
