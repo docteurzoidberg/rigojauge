@@ -42,6 +42,8 @@ class Outrun
 public:
 
   std::vector<Section> sections;
+  float playerProgression = 0.0f; // progression du joueur en nombre de segments (ex: 3.5 = il est au milieu du 3è segment)
+  float playerSpeed = 1.0f;
   Outrun()
   {
     initTrack();
@@ -52,7 +54,7 @@ public:
     //create 4 flat straight sections
     for (int sectionIndex = 0; sectionIndex < 4; sectionIndex++) {
       Section s;
-      s.fCurvatureX = 0.0f;
+      s.fCurvatureX = (sectionIndex % 2) * 2 - 1.0;
       s.fCurvatureY = 0.0f;
       s.fType = 0;
       for (int j = 0; j < 6; j++) {
@@ -77,8 +79,37 @@ public:
     bStarted = true;
   }
 
-  void update(float fElapsedTime) {
+  void generateNextSection() {
+    // TODO a faire correctement
+    Section s;
+    s.fCurvatureX = -sections[0].fCurvatureX;
+    s.fCurvatureY = 0.0f;
+    s.fType = 0;
+    for (int j = 0; j < 6; j++) {
+      Segment seg;
+      seg.nIndex = 999; //sectionIndex* 6 +j; :shrug: 
+      
+      //todo: set height based on section type
+      //seg.nHeight = 
+      
+      //add start flag ti 4th segment of first section
+      //if(sectionIndex==0 && j==4) {
+        //seg.sprite = 
+        //TODO
+      //}
+      s.segments.push_back(seg);
+    }
+    sections.push_back(s);
+  }
 
+  void update(float fElapsedTime) {
+    playerProgression += fElapsedTime * playerSpeed;
+    if(sections.size() > 0 && playerProgression > sections[0].segments.size()) {
+      playerProgression -= sections[0].segments.size();
+      sections.erase(sections.begin());
+    }
+    if(sections.size() < 5)
+      generateNextSection();
   }
 
   bool bStarted = false;
@@ -151,6 +182,73 @@ protected:
     //pixelFont24->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} );
   }
 
+  void EraseScreen() {
+    // Fonction présente uniquement tant que le render définitif n'estpas fait, a virer plus tard
+    for (int y = 0; y < SCREEN_H; y++) {
+      for (int x = 0; x < SCREEN_W; x++) {
+        Draw(x, y, olc::BLACK);
+      }
+    }
+  }
+  
+  /*
+    rendu temporaire vu de dessus, sans perspective
+  */
+  void DrawRoad() {
+    if(game.sections.size() == 0)
+      return;
+
+    float x = ScreenWidth() / 2.0f;
+    float y = ScreenHeight();
+    float angle = - M_PI * 0.5f;
+
+    // en vrai ça c'est des constantes
+    float section_len = 8.0f;
+    float road_width = 64.0f;
+    float fCurvatureXcoeff = M_PI * 0.125f;
+
+    // calcule les transformations liées a la position du joueur sur la première section
+    for(int i = 0 ; i < game.playerProgression + 1 ; i++) {
+        float player_progression = clamp(game.playerProgression - i, 0.0f, 1.0f);
+        float dx = cos(angle);
+        float dy = sin(angle);
+        angle -= game.sections[0].fCurvatureX * fCurvatureXcoeff / game.sections[0].segments.size() * player_progression;
+
+        x -= dx * section_len * player_progression;
+        y -= dy * section_len * player_progression;
+
+    }
+
+    // print les sections
+    for(auto section : game.sections) {
+      for(auto segment : section.segments) {
+        float dx = cos(angle);
+        float dy = sin(angle);
+
+        float last_left_x = x + dy * road_width * 0.5;
+        float last_right_x = x - dy * road_width * 0.5;
+        float last_left_y = y - dx * road_width * 0.5;
+        float last_right_y = y + dx * road_width * 0.5;
+
+        angle += section.fCurvatureX * fCurvatureXcoeff / section.segments.size();
+        dx = cos(angle);
+        dy = sin(angle);
+
+        x += dx * section_len;
+        y += dy * section_len;
+
+        float left_x = x + dy * road_width * 0.5;
+        float right_x = x - dy * road_width * 0.5;
+        float left_y = y - dx * road_width * 0.5;
+        float right_y = y + dx * road_width * 0.5;
+
+        DrawLine(left_x, left_y, right_x, right_y);
+        DrawLine(last_left_x, last_left_y, left_x, left_y);
+        DrawLine(last_right_x, last_right_y, right_x, right_y);
+      }
+    }
+  }
+
   // Called by olcConsoleGameEngine
   virtual bool OnUserCreate()
   { 
@@ -178,6 +276,9 @@ protected:
     if(GetKey(olc::Key::M).bPressed)
       bDrawMask = !bDrawMask;
     
+    game.update(fElapsedTime);
+    EraseScreen();
+    DrawRoad();
     if(bShowDebug)
       DrawDebug(); // Draw debug info
     if(bDrawMask)
