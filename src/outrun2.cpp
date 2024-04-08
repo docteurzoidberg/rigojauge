@@ -42,8 +42,11 @@ class Outrun
 public:
 
   std::vector<Section> sections;
-  float playerProgression = 0.0f; // progression du joueur en nombre de segments (ex: 3.5 = il est au milieu du 3è segment)
-  float playerSpeed = 1.0f;
+  
+  float fPlayerProgression = 0.0f; // progression du joueur en nombre de segments (ex: 3.5 = il est au milieu du 3è segment)
+  float fPlayerSpeed = 1.0f;
+  double fAccumulatedTime = 0.0;
+
   Outrun()
   {
     initTrack();
@@ -52,20 +55,20 @@ public:
   void initTrack() {
 
     //create 4 flat straight sections
-    for (int sectionIndex = 0; sectionIndex < 4; sectionIndex++) {
+    for (int nSectionIndex = 0; nSectionIndex < 4; nSectionIndex++) {
       Section s;
-      s.fCurvatureX = (sectionIndex % 2) * 2 - 1.0;
+      s.fCurvatureX = (nSectionIndex % 2) * 2 - 1.0;
       s.fCurvatureY = 0.0f;
       s.fType = 0;
       for (int j = 0; j < 6; j++) {
         Segment seg;
-        seg.nIndex = sectionIndex* 6 +j; 
+        seg.nIndex = nSectionIndex* 6 +j; 
         
         //todo: set height based on section type
         //seg.nHeight = 
         
         //add start flag ti 4th segment of first section
-        if(sectionIndex==0 && j==4) {
+        if(nSectionIndex==0 && j==4) {
           //seg.sprite = 
           //TODO
         }
@@ -103,11 +106,21 @@ public:
   }
 
   void update(float fElapsedTime) {
-    playerProgression += fElapsedTime * playerSpeed;
-    if(sections.size() > 0 && playerProgression > sections[0].segments.size()) {
-      playerProgression -= sections[0].segments.size();
+    //Accumulate time
+    fAccumulatedTime += fElapsedTime;
+
+    //Move player forward
+    fPlayerProgression += fElapsedTime * fPlayerSpeed;
+
+    //Remove sections that are behind the player
+    //TODO: remove only sections with no more visible sprites on screen
+    //sprites are taller than the lines of the segment that are rendered
+    if(sections.size() > 0 && fPlayerProgression > sections[0].segments.size()) {
+      fPlayerProgression -= sections[0].segments.size();
       sections.erase(sections.begin());
     }
+
+    //Generate new section if needed
     if(sections.size() < 5)
       generateNextSection();
   }
@@ -118,12 +131,12 @@ private:
 
 };
 
-class OutrunRenderer : public olc::PixelGameEngine
+class Pseudo3dRenderer : public olc::PixelGameEngine
 {
 public:
-  OutrunRenderer(string theme="default")
+  Pseudo3dRenderer(string theme="default")
   {
-    sAppName = "Outrun";
+    sAppName = "Outrun3dView";
     sTheme = theme;
   }
 
@@ -181,75 +194,14 @@ protected:
     //auto fScale                 = 1.0f;
     //pixelFont24->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} );
   }
-
-  void EraseScreen() {
-    // Fonction présente uniquement tant que le render définitif n'estpas fait, a virer plus tard
-    for (int y = 0; y < SCREEN_H; y++) {
-      for (int x = 0; x < SCREEN_W; x++) {
-        Draw(x, y, olc::BLACK);
-      }
-    }
-  }
   
-  /*
-    rendu temporaire vu de dessus, sans perspective
-  */
+
   void DrawRoad() {
     if(game.sections.size() == 0)
       return;
-
-    float x = ScreenWidth() / 2.0f;
-    float y = ScreenHeight();
-    float angle = - M_PI * 0.5f;
-
-    // en vrai ça c'est des constantes
-    float section_len = 8.0f;
-    float road_width = 64.0f;
-    float fCurvatureXcoeff = M_PI * 0.125f;
-
-    // calcule les transformations liées a la position du joueur sur la première section
-    for(int i = 0 ; i < game.playerProgression + 1 ; i++) {
-        float player_progression = clamp(game.playerProgression - i, 0.0f, 1.0f);
-        float dx = cos(angle);
-        float dy = sin(angle);
-        angle -= game.sections[0].fCurvatureX * fCurvatureXcoeff / game.sections[0].segments.size() * player_progression;
-
-        x -= dx * section_len * player_progression;
-        y -= dy * section_len * player_progression;
-
-    }
-
-    // print les sections
-    for(auto section : game.sections) {
-      for(auto segment : section.segments) {
-        float dx = cos(angle);
-        float dy = sin(angle);
-
-        float last_left_x = x + dy * road_width * 0.5;
-        float last_right_x = x - dy * road_width * 0.5;
-        float last_left_y = y - dx * road_width * 0.5;
-        float last_right_y = y + dx * road_width * 0.5;
-
-        angle += section.fCurvatureX * fCurvatureXcoeff / section.segments.size();
-        dx = cos(angle);
-        dy = sin(angle);
-
-        x += dx * section_len;
-        y += dy * section_len;
-
-        float left_x = x + dy * road_width * 0.5;
-        float right_x = x - dy * road_width * 0.5;
-        float left_y = y - dx * road_width * 0.5;
-        float right_y = y + dx * road_width * 0.5;
-
-        DrawLine(left_x, left_y, right_x, right_y);
-        DrawLine(last_left_x, last_left_y, left_x, left_y);
-        DrawLine(last_right_x, last_right_y, right_x, right_y);
-      }
-    }
+    //TODO
   }
 
-  // Called by olcConsoleGameEngine
   virtual bool OnUserCreate()
   { 
     //init logic
@@ -266,18 +218,16 @@ protected:
     return true;
   }
 
-  // Called by olcConsoleGameEngine
   virtual bool OnUserUpdate(float fElapsedTime)
   {  
     // Handle Input
     if (GetKey(olc::Key::D).bPressed)
       bShowDebug = !bShowDebug;
-    
     if(GetKey(olc::Key::M).bPressed)
       bDrawMask = !bDrawMask;
     
     game.update(fElapsedTime);
-    EraseScreen();
+    Clear(olc::VERY_DARK_YELLOW);
     DrawRoad();
     if(bShowDebug)
       DrawDebug(); // Draw debug info
@@ -287,11 +237,108 @@ protected:
   }
 };
 
+class TopViewRenderer : public olc::PixelGameEngine
+{
+public:
+  TopViewRenderer()
+  {
+    sAppName = "OutrunTopView";
+  }
+
+private:  
+
+  Outrun game;
+  
+  bool bShowDebug = false;
+  bool bDrawMask = true;
+
+  float fSectionLength = 8.0f;
+  float fRoadWidth = 64.0f;
+  float fCurvatureXcoeff = M_PI * 0.125f;
+
+protected:
+  /*
+    rendu temporaire vu de dessus, sans perspective
+  */
+  void Draw2dRoad() {
+    if(game.sections.size() == 0)
+      return;
+
+    float x = ScreenWidth() / 2.0f;
+    float y = ScreenHeight();
+    float angle = - M_PI * 0.5f;
+
+    // calcule les transformations liées a la position du joueur sur la première section
+    for(int i = 0 ; i < game.fPlayerProgression + 1 ; i++) {
+      float fClampedPosition = clamp(game.fPlayerProgression - i, 0.0f, 1.0f);
+      float dx = cos(angle);
+      float dy = sin(angle);
+      angle -= game.sections[0].fCurvatureX * fCurvatureXcoeff / game.sections[0].segments.size() * fClampedPosition;
+      x -= dx * fSectionLength * fClampedPosition;
+      y -= dy * fSectionLength * fClampedPosition;
+    }
+
+    // print les sections
+    for(auto section : game.sections) {
+      for(auto segment : section.segments) {
+        float dx = cos(angle);
+        float dy = sin(angle);
+
+        float last_left_x = x + dy * fRoadWidth * 0.5;
+        float last_right_x = x - dy * fRoadWidth * 0.5;
+        float last_left_y = y - dx * fRoadWidth * 0.5;
+        float last_right_y = y + dx * fRoadWidth * 0.5;
+
+        angle += section.fCurvatureX * fCurvatureXcoeff / section.segments.size();
+        dx = cos(angle);
+        dy = sin(angle);
+
+        x += dx * fSectionLength;
+        y += dy * fSectionLength;
+
+        float left_x = x + dy * fRoadWidth * 0.5;
+        float right_x = x - dy * fRoadWidth * 0.5;
+        float left_y = y - dx * fRoadWidth * 0.5;
+        float right_y = y + dx * fRoadWidth * 0.5;
+
+        DrawLine(left_x, left_y, right_x, right_y);
+        DrawLine(last_left_x, last_left_y, left_x, left_y);
+        DrawLine(last_right_x, last_right_y, right_x, right_y);
+      }
+    }
+  }
+
+  virtual bool OnUserCreate()
+  { 
+    //init logic
+    game = Outrun();
+    return true;
+  }
+
+  virtual bool OnUserUpdate(float fElapsedTime)
+  {  
+    // Handle Input
+    if (GetKey(olc::Key::D).bPressed)
+      bShowDebug = !bShowDebug;
+    if(GetKey(olc::Key::M).bPressed)
+      bDrawMask = !bDrawMask;
+    
+    game.update(fElapsedTime);
+    Clear(olc::BLACK);
+    Draw2dRoad();
+    return true;
+  }
+};
+
 int main()
 {
   auto theme="default";
-  OutrunRenderer renderer(theme);
-  if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
-    renderer.Start();
+  //Pseudo3dRenderer renderer3d = Pseudo3dRenderer(theme);
+  TopViewRenderer renderer2d = TopViewRenderer(); 
+  
+  //if (renderer3d.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
+  //  renderer3d.Start();
+  if (renderer2d.Construct(SCREEN_W , SCREEN_H, 1, 1))
+    renderer2d.Start();
   return 0;
 }

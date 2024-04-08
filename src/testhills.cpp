@@ -1,13 +1,11 @@
-
-#include <iostream>
 #define OLC_PGE_APPLICATION
 
 using namespace std;
 
 #include "../lib/olcPixelGameEngine.h"
 
-#define SCREEN_W 500
-#define SCREEN_H 240
+#define SCREEN_W 240
+#define SCREEN_H 120
 #define SCREEN_PIXELSIZE 1
 
 #include <string>
@@ -53,7 +51,8 @@ class TestRenderer : public olc::PixelGameEngine
 public:
   TestRenderer()
   {
-    sAppName = "Hills";
+    seed = 1712445903; //time(nullptr);
+    sAppName = to_string(seed);
   }
 
 private:  
@@ -104,8 +103,6 @@ private:
 
     for (int i = 0; i < final_layers.size(); ++i) {
       auto& layer = final_layers[i];
-      //console layer size
-      std::cout << "Layer size: " << layer.size() << std::endl;
       for(int x = 0; x < layer.size(); ++x) {
         DrawLine(olc::vi2d{layer[x].first, landscape.height - layer[x].second}, olc::vi2d{layer[x].first, landscape.height}, colour_palette[i]);
       }
@@ -153,7 +150,6 @@ private:
 
   virtual bool OnUserCreate()
   {
-    seed = time(nullptr);
     srand(static_cast<unsigned int>(seed));
     landscape.midpointDisplacement(std::make_pair(250, 0), std::make_pair(landscape.width, 200), 1.4, .04*landscape.height, 12);
     landscape.midpointDisplacement(std::make_pair(0, .70*landscape.height), std::make_pair(landscape.width, .64*landscape.height), 0.9, .50*landscape.height, 8); 
