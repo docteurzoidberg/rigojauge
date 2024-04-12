@@ -1,6 +1,7 @@
 **/*.o
 landscape.png
 testhills
+testentities
 testtiles
 testmode7
 tractocompass
