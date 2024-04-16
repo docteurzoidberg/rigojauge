@@ -22,6 +22,8 @@ using namespace std;
 #define TILEMAP_WIDTH (TILES_X * TILE_WIDTH)
 #define TILEMAP_HEIGHT (TILES_Y * TILE_HEIGHT)
 
+#define SEED 1962784967
+
 class PNJ {
   private:
     olc::vi2d spriteSize = {0, 0};
@@ -74,11 +76,6 @@ class PNJ {
       spriteSize = {w, h};
     }
 
-    //auto getSpriteSheet() {
-      //get sprites
-    //  return spriteSheet;
-    //}
-
     void update(float fElapsedTime) {
       
       //update animation
@@ -91,10 +88,10 @@ class PNJ {
       }
 
       //move randomly for 0 to 3 tile
-      float moveX = (rand() % 3) - 1;
-      float moveY = (rand() % 3) - 1;
-      setTarget(x+ moveX, y+moveY);
-      move(fElapsedTime*0.1f);
+      //float moveX = (rand() % 3) - 1;
+      //float moveY = (rand() % 3) - 1;
+      //setTarget(x+ moveX, y+moveY);
+      //move(fElapsedTime*0.1f);
     }
 
     void setTarget(float dx, float dy) {
@@ -103,6 +100,7 @@ class PNJ {
     }
 
     void move(float elapsedTime) {
+      //TODO: debug/test
       //move torward target based on elapsed time and speed
       if(x>targetX)
         x -= targetX * speed * elapsedTime;
@@ -146,6 +144,29 @@ class Duck : public PNJ {
     ~Duck() {
       cout << "Duck destructor" << endl;
     }
+
+    //given other pnjs, player pos and tilemap 2d array, update duck logic
+    void DuckLogic() {
+
+      //TODO: function receives player pos, tilemap content, and other pnjs
+      //uint8_t map[TILES_X][TILES_Y];
+      //Player player = Player();
+      //vector<PNJ*> pnjs;
+
+      //Duck's logic:
+      //if player is near, run away
+      //if player is far, walk around
+      //if player is very far, idle
+      //if water is near and no player around, swim
+
+      //TODO: calc player distance
+      //auto playerDist = sqrt((player->x - x)*(player->x - x) + (player->y - y)*(player->y - y));
+
+      //TODO: calculate flee vector
+      //TODO: calculate wander vector (random walk)
+      //TODO: calculate nearest water tile
+    }
+
 };
 
 class Player {
@@ -185,7 +206,7 @@ class TileMap {
       }
     }
 
-    uint8_t getNoise(int x, int y, double seed) {
+    uint8_t calcNoise(int x, int y, double seed) {
       auto const noise = (
         db::perlin((double)x / 64.0f, (double)y / 64.0f, .25f*seed) * 1.0 +
         db::perlin((double)x / 32.0f, (double)y / 32.0f, .75f*seed) * 0.5
@@ -201,7 +222,7 @@ class TileMap {
       auto startY = worldy - TILES_Y/2;
       for (auto y = 0u; y < TILES_Y; ++y) {
         for (auto x = 0u; x < TILES_X; ++x) {
-          map[x][y] =getNoise(startX+x, startY+y, seed);
+          map[x][y] =calcNoise(startX+x, startY+y, seed);
         }
       }
     }
@@ -209,7 +230,7 @@ class TileMap {
     void randomize(float fElapsedTime) {
       for (auto y = 0u; y < TILES_Y; ++y) {
         for (auto x = 0u; x < TILES_X; ++x) {
-          map[x][y] = getNoise(x, y, fElapsedTime);
+          map[x][y] = calcNoise(x, y, fElapsedTime);
         }
       }
     }
@@ -232,51 +253,88 @@ class TileMap {
         tile = TILE_DIRT;
       } else if (noise > 80) {
         tile = TILE_GRASS1;
-      }  
-      else if (noise > 78) {
+      } else if (noise > 78) {
         tile = TILE_GRASS2;
-      }
-      else if (noise > 76) {
+      } else if (noise > 76) {
         tile = TILE_GRASS3;
-      }
-      else if (noise > 60) {
+      } else if (noise > 60) {
         tile = TILE_WHEAT;
       }
       return tile;
     }
 };
 
-TileMap tileMap;
-Player player;
+class Game {
+  public:
+    TileMap tileMap;
+    Player player;
+    vector<PNJ*> pnjs;
 
-class TileMapRenderer : public olc::PixelGameEngine
-{
-public:
-  TileMapRenderer()
-  {
-    sAppName = "Tiles";
-  }
+    bool playerMoved = false;
 
-private:
-  float fTotalTime = 0.0f;
-  bool bShowDebug = true;
-  bool bShowPerlin = false;
-  bool bUseDebugSprites = true;
+    Game() {
+      player = Player();
+      tileMap = TileMap();
+    }
 
-  std::unique_ptr<olc::Sprite> sprTileSheet;
-  //std::unique_ptr<olc::Sprite> sprTileMap;
+    void addPNJ(PNJ* pnj) {
+      pnjs.push_back(pnj);
+    }
 
-  olc::vi2d tileSize = {TILE_WIDTH, TILE_HEIGHT};
+    void movePlayer(float dx, float dy) {
+      player.x += dx;
+      player.y += dy;
+      playerMoved = true;
+    }
 
-  //render 5 tiles each direction around player pos
-  const uint8_t renderRadius = 5u; //(SCREEN_W / 2 ) / TILE_WIDTH ; 
+    olc::vi2d getPlayerPosI() {
+      return {(int)player.x, (int)player.y};
+    } 
 
-  vector<PNJ*> pnjs;
+    olc::vf2d getPlayerPosF() {
+      return {player.x, player.y};
+    }
+
+    void generateTileMap() {
+      tileMap.generate((int)player.x, (int)player.y, SEED);
+    }
+
+    void update(float fElapsedTime) {
+      //update player
+      //update pnjs
+      //update tilemap
+    }
+};
+
+class GameRenderer : public olc::PixelGameEngine {
+  public:
+    GameRenderer()
+    {
+      sAppName = "Tiles";
+    }
+
+  private:
+    Game game;
+
+    float fTotalTime = 0.0f;
+    bool bShowDebug = true;
+    bool bShowPerlin = false;
+    bool bUseDebugSprites = true;
+
+    std::unique_ptr<olc::Sprite> sprTileSheet;
+    //std::unique_ptr<olc::Sprite> sprTileMap;
+
+    olc::vi2d lastPlayerPos = {-1, -1};
+
+    olc::vi2d tileSize = {TILE_WIDTH, TILE_HEIGHT};
+
+    //render 5 tiles each direction around player pos
+    const uint8_t renderRadius = 5u; //(SCREEN_W / 2 ) / TILE_WIDTH ; 
 
 protected:
 
   void RenderPNJs(float fElapsedTime) {
-    for(auto pnj : pnjs) {
+    for(auto pnj : game.pnjs) {
 
 
       //if pnj is a duck
@@ -285,8 +343,8 @@ protected:
       }
 
       //tile offset relative to player (screen center)
-      auto tileOffsetX = (pnj->x - player.x) * TILE_WIDTH;
-      auto tileOffsetY = (pnj->y - player.y) * TILE_HEIGHT;
+      auto tileOffsetX = (pnj->x - game.player.x) * TILE_WIDTH;
+      auto tileOffsetY = (pnj->y - game.player.y) * TILE_HEIGHT;
 
       //tile position on screen is tileOffset - screen center to get at 0
       auto pnjScreenX = (SCREEN_W / 2) + tileOffsetX;
@@ -305,12 +363,14 @@ protected:
   }
 
   void RenderTileMap() {
+
+
     //render tile map
     for (int y = 0; y < TILES_Y; y++) {
       for (int x = 0; x < TILES_X; x++) {
 
-        auto tileNoise = tileMap.getNoiseXY(x, y);
-        auto tile = tileMap.toTile(tileNoise);
+        auto tileNoise = game.tileMap.getNoiseXY(x, y);
+        auto tile = game.tileMap.toTile(tileNoise);
 
         if(!bShowPerlin && tile == TILE_NOTHING) 
           continue;
@@ -343,16 +403,22 @@ protected:
   }
 
   virtual bool OnUserCreate() { 
-    //sprTileMap = std::make_unique<olc::Sprite>(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT);
-    //tileMap.randomize(1230);
+    
+    //init game
+    game = Game();
+
     // Load the sprites
     sprTileSheet = std::make_unique<olc::Sprite>("./sprites/testtiles/tileset16px.png");
 
+    //Set random seed
+    srand(SEED);
+
     //create some PNJs
-    pnjs.push_back(new Duck(0.0f,0.0f,"Albert", olc::BLUE));
-    pnjs.push_back(new Duck(5.0f,5.0f,"Bernard", olc::GREEN));
-    pnjs.push_back(new Duck(12.0f,12.0f,"Charles", olc::YELLOW));
-    pnjs.push_back(new Duck(-15.0f,-15.0f,"Denis", olc::RED));
+    game.addPNJ(new Duck(0.0f,0.0f,"Albert", olc::BLUE));
+    game.addPNJ(new Duck(5.0f,5.0f,"Bernard", olc::GREEN));
+    game.addPNJ(new Duck(12.0f,12.0f,"Charles", olc::YELLOW));
+    game.addPNJ(new Duck(-15.0f,-15.0f,"Denis", olc::RED));
+    
 
     return true;
   }
@@ -368,43 +434,51 @@ protected:
     if(GetKey(olc::Key::P).bPressed)
       bShowPerlin = !bShowPerlin;
 
-    if(GetKey(olc::Key::UP).bHeld) {
-      player.y -= 15.0f * fElapsedTime;  
-      cout << "Player pos: " << player.x << ", " << player.y << endl;
-    }
-    if(GetKey(olc::Key::DOWN).bHeld) {
-      player.y += 15.0f * fElapsedTime;  
-      cout << "Player pos: " << player.x << ", " << player.y << endl;
-    }
-    if(GetKey(olc::Key::RIGHT).bHeld) {
-      player.x += 15.0f * fElapsedTime;  
-      cout << "Player pos: " << player.x << ", " << player.y << endl;
-    }
-    if(GetKey(olc::Key::LEFT).bHeld) {
-      player.x -= 15.0f * fElapsedTime;  
-      cout << "Player pos: " << player.x << ", " << player.y << endl;
-    }
+    game.playerMoved = false;
 
+    if(GetKey(olc::Key::UP).bHeld) 
+      game.movePlayer(0,-15.0f * fElapsedTime);  
     
-    Clear(olc::BLACK);
-    //tileMap->randomize(fTotalTime);
-    tileMap.generate(player.x, player.y, 0);
+    if(GetKey(olc::Key::DOWN).bHeld) 
+      game.movePlayer(0, 15.0f * fElapsedTime);  
 
+    if(GetKey(olc::Key::RIGHT).bHeld) 
+      game.movePlayer(15.0f * fElapsedTime, 0);  
+    
+    if(GetKey(olc::Key::LEFT).bHeld) 
+      game.movePlayer(-15.0f * fElapsedTime, 0); 
+
+    //debug show player pos if player as moved
+    if(game.playerMoved) {
+      cout << "Player pos: " << game.player.x << ", " << game.player.y << endl;
+    }
+
+    auto newPlayerPos = game.getPlayerPosI();
+
+    //if world pos (integer) changed, update tile map
+    if(lastPlayerPos != newPlayerPos) {
+      sAppName = to_string(newPlayerPos.x) + ", " + to_string(newPlayerPos.y);
+      cout << "regenerate tile map" << endl;
+      game.generateTileMap();
+      lastPlayerPos = newPlayerPos;
+    }
+
+    //update game logic
+    game.update(fElapsedTime);
+    
+    //no need to clear screen if we draw all tiles
     RenderTileMap();
 
-    //Draw the tile map centered on the screen
-    //DrawSprite({(SCREEN_W/2) - (TILEMAP_WIDTH/2),(SCREEN_H/2) - (TILEMAP_HEIGHT/2)}, sprTileMap.get(), 1);
-    
+    //render and update PNJs
     RenderPNJs(fElapsedTime);
+
     return true;
   }
 };
 
 int main()
 {
-  player = Player();
-  tileMap = TileMap();
-  TileMapRenderer renderer2d = TileMapRenderer();
+  GameRenderer renderer2d = GameRenderer();
   if (renderer2d.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
     renderer2d.Start();
   return 0;

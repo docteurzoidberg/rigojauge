@@ -6,11 +6,102 @@
 #define OLC_PGEX_FONT
 #include "../lib/olcPGEX_Font.h"
 
+#define DB_PERLIN_IMPL
+#include "../lib/dbPerlin.hpp"
+
 #define SCREEN_W 240
 #define SCREEN_H 240
 #define SCREEN_PIXELSIZE 2
 
 #include <string>
+
+
+#define TILE_WIDTH 16
+#define TILE_HEIGHT 16
+
+enum Tiles { 
+  TILE_NOTHING = 0, 
+  TILE_DIRT = 1,
+  TILE_GRASS = 2,
+  TILE_SAND = 3,
+  TILE_HIGHGRASS = 4,
+  TILE_WHEAT = 5,
+  TILE_BUSH = 6,
+  TILE_TREE = 7,
+  TILE_ROCK = 8
+};
+
+class TileMap {
+  public:
+    static const uint8_t tilesX = 30;
+    static const uint8_t tilesY = 30;
+
+    //map data
+    uint8_t map[tilesX][tilesY];
+
+    TileMap() {
+      for (auto y = 0; y < tilesY; y++) {
+        for (auto x = 0; x < tilesX; x++) {
+          map[x][y] = TILE_NOTHING;
+        }
+      }
+    }
+
+    uint8_t getNoise(int x, int y, double seed) {
+      auto const noise = (
+          db::perlin((double)x / 64.0f, (double)y / 64.0f, .25f*seed) * 1.0 +
+          db::perlin((double)x / 32.0f, (double)y / 32.0f, .75f*seed) * 0.5
+      ) / 1.5;
+      auto const scaled = (uint8_t)((noise * 0.5 + 0.5) * 255.0);
+      return scaled;
+    }
+
+    void generate(int worldx, int worldy, double seed) {
+
+
+      //word pos to tile coordinates:
+
+      //world 0,0 is center screen so we must generate offset by TILE_WIDTH/2, TILE_HEIGHT/2
+      auto startX = worldx - tilesX/2;
+      auto startY = worldy - tilesY/2;
+
+      for (auto y = 0u; y < tilesY; ++y) {
+        for (auto x = 0u; x < tilesX; ++x) {
+          //if(map[x][y] == TILE_NOTHING)
+          map[x][y] = toTile( getNoise(startX+x, startY+y, seed));
+        }
+      }
+    }
+
+    void randomize(float fElapsedTime) {
+      for (auto y = 0u; y < tilesY; ++y) {
+        for (auto x = 0u; x < tilesX; ++x) {
+          map[x][y] = toTile( getNoise(x, y, fElapsedTime));
+        }
+      }
+    }
+
+    uint8_t getTileXY(int x, int y) {
+      return map[x][y];
+    }
+
+    private:
+      uint8_t toTile(uint8_t noise) {
+        uint8_t tile = 0;
+        if (noise > 200) {
+          tile = TILE_NOTHING;
+        } else if (noise > 160) {
+          tile = TILE_SAND;
+        } else if (noise > 140) {
+          tile = TILE_DIRT;
+        } else if (noise > 80) {
+          tile = TILE_GRASS;
+        } else if (noise > 60) {
+          tile = TILE_WHEAT;
+        }
+        return tile;
+      }
+};
 
 class TestRenderer : public olc::PixelGameEngine
 {
@@ -23,6 +114,8 @@ public:
 private:  
 
   int sprTractorFrameIndex=16;
+
+  int turnDirection = 0;  //-1 = left, 1 = right, 0 = none
 
   float fAccumulatedTime = 0.0f;
   float fTargetFrameTime = 100/1000.0f;
@@ -41,7 +134,7 @@ private:
   
   std::unique_ptr<olc::Sprite> sprTractor;
   std::unique_ptr<olc::Sprite> sprCompass;
-	std::unique_ptr<olc::Sprite> sprGround;
+	//std::unique_ptr<olc::Sprite> sprGround;
   std::unique_ptr<olc::Sprite> sprSky;
   std::unique_ptr<olc::Sprite> sprSign;
   std::unique_ptr<olc::Sprite> sprSignDirections;
@@ -61,10 +154,41 @@ private:
   olc::vi2d signDirectionTextPos = sprSignPos + olc::vi2d({11,30});
   olc::vi2d signDirectionAnglePos = sprSignPos + olc::vi2d({11,50});
 
-	int nMapSize = 1600;
+	int nMapSize = 480;
+
+  TileMap* tileMap;
+  
+  std::unique_ptr<olc::Sprite> sprTileSheet;
+  std::unique_ptr<olc::Sprite> sprTileMap;
+
+  bool bShowDebugTileSprite = false;
+
+  olc::vi2d tileSize = {TILE_WIDTH, TILE_HEIGHT};
 
   void DrawSky() {
 
+  }
+
+  void RenderTileMap() {
+    //render tile map
+    for (int y = 0; y < tileMap->tilesY; y++) {
+      for (int x = 0; x < tileMap->tilesX; x++) {
+        int tile = tileMap->getTileXY(x, y);
+        if(tile == TILE_NOTHING) continue;
+        olc::vi2d tileCoords = olc::vi2d(x, y)*tileSize;
+        
+        //this draw directly to screen*
+        //DrawPartialSprite(tileCoords, sprTileSheet.get(), olc::vi2d(tile, 0)*tileSize, tileSize); 
+        
+        //this draw tile's pixels to destination sprite
+        for (int ty = 0; ty < tileSize.y; ty++) {
+          for (int tx = 0; tx < tileSize.x; tx++) {
+            olc::Pixel p = sprTileSheet->GetPixel((tile-1)*tileSize.x+tx, ty + (bShowDebugTileSprite?0:tileSize.y));
+            sprTileMap->SetPixel(tileCoords.x+tx, tileCoords.y+ty, p);
+          }
+        }
+      }
+    }
   }
 
   void DrawRoad() {
@@ -107,7 +231,8 @@ private:
 
 				// Sample symbol and colour from map sprite, and draw the
 				// pixel to the screen
-				auto pixel = sprGround->GetPixel(fSampleX*nMapSize, fSampleY*nMapSize);
+				//auto pixel = sprGround->GetPixel(fSampleX*nMapSize, fSampleY*nMapSize);
+				auto pixel = sprTileMap->GetPixel(fSampleX*nMapSize, fSampleY*nMapSize);
 				
 				Draw(x, y + (ScreenHeight() / 2), pixel);		
 
@@ -218,7 +343,12 @@ private:
 
   virtual bool OnUserCreate()
   {
-    sprGround = std::make_unique<olc::Sprite>("./sprites/tractocompass/map.png");
+    tileMap = new TileMap();
+    tileMap->randomize(0.0f);
+
+    //sprGround = std::make_unique<olc::Sprite>("./sprites/tractocompass/map.png");
+    sprTileSheet = std::make_unique<olc::Sprite>("./sprites/tractocompass/tileset16px.png");
+    sprTileMap = std::make_unique<olc::Sprite>(tileMap->tilesX * TILE_WIDTH, tileMap->tilesY * TILE_HEIGHT);
     sprCompass = std::make_unique<olc::Sprite>("./sprites/tractocompass/compassbar.png");
     sprSign = std::make_unique<olc::Sprite>("./sprites/tractocompass/sign.png");
     sprSignDirections = std::make_unique<olc::Sprite>("./sprites/tractocompass/sign-directions.png");
@@ -238,26 +368,48 @@ private:
     {
       bDrawMask = !bDrawMask;
     }
+
+    //input to toggle debug tile sprite
+    if (GetKey(olc::Key::D).bPressed)
+    {
+      bShowDebugTileSprite = !bShowDebugTileSprite;
+    }
+
     	// Control rendering parameters dynamically
 		if (GetKey(olc::Key::Q).bHeld) fNear += 0.1f * fElapsedTime;
 		if (GetKey(olc::Key::A).bHeld) fNear -= 0.1f * fElapsedTime;
 		if (GetKey(olc::Key::S).bHeld) fFar -= 0.1f * fElapsedTime;
 		if (GetKey(olc::Key::Z).bHeld) fFoVHalf += 0.1f * fElapsedTime;
 		if (GetKey(olc::Key::X).bHeld) fFoVHalf -= 0.1f * fElapsedTime;
-    if (GetKey(olc::Key::LEFT).bHeld) fWorldA -= 1.0f * fElapsedTime;
-		if (GetKey(olc::Key::RIGHT).bHeld) fWorldA += 1.0f * fElapsedTime;
 
-		if (GetKey(olc::Key::UP).bHeld)
-		{
+    if (GetKey(olc::Key::LEFT).bHeld) {
+      fWorldA -= 1.0f * fElapsedTime;
+      turnDirection = -1;
+    } else if (GetKey(olc::Key::RIGHT).bHeld) {
+      fWorldA += 1.0f * fElapsedTime;
+      turnDirection = 1;
+    } else {
+      turnDirection = 0;
+    }
+
+    //for now keep moving forward
+		//if (GetKey(olc::Key::UP).bHeld)
+		//{
 			fWorldX += cosf(fWorldA) * 0.2f * fElapsedTime;
 			fWorldY += sinf(fWorldA) * 0.2f * fElapsedTime;
-		}
-
+		//}
+    
+    //slow down
 		if (GetKey(olc::Key::DOWN).bHeld)
 		{
-			fWorldX -= cosf(fWorldA) * 0.2f * fElapsedTime;
-			fWorldY -= sinf(fWorldA) * 0.2f * fElapsedTime;
+			fWorldX -= cosf(fWorldA) * 0.1f * fElapsedTime;
+			fWorldY -= sinf(fWorldA) * 0.1f * fElapsedTime;
 		}
+
+    // Render the tile map
+    //tileMap->randomize(fAccumulatedTime);
+    tileMap->generate(fWorldX, fWorldY, 1234.56f);
+    RenderTileMap();
 
     //Draw background map
     DrawRoad();
@@ -266,7 +418,7 @@ private:
     SetPixelMode(olc::Pixel::MASK); // Dont draw pixels which have any transparency
     
     //Tracteur "fixe"
-    DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(16,0)*sprTractorSize, sprTractorSize,2);
+    DrawPartialSprite(sprTractorPos,  sprTractor.get(), olc::vi2d(16 + turnDirection,0)*sprTractorSize, sprTractorSize,2);
 
     //map frame index (0 to 31) to a 360 compass direction
     auto fAngle = (180 + (static_cast<float>(sprTractorFrameIndex) / 32.0f)*360.0f) ;
@@ -286,7 +438,7 @@ private:
     }
 
     //make world rotate
-    fWorldA -= 0.5f * fElapsedTime;
+    //fWorldA -= 0.5f * fElapsedTime;
 
     // Update sprite index every 60ms
     //increment sprite index but loop when exceed 32
