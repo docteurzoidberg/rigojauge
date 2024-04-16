@@ -33,7 +33,9 @@ class PNJ {
     uint8_t curAnimationFrame = 0;
     uint8_t startAnimationFrame = 0;
     uint8_t endAnimationFrame = 0;
+    uint8_t animationFps = 1;
     bool animationLoop = false;
+
     float fTotalTime = 0.0f;
 
     float targetX=0.0f;
@@ -74,6 +76,13 @@ class PNJ {
 
     void setSpriteSize(uint16_t w, uint16_t h) {
       spriteSize = {w, h};
+    }
+
+    void setAnimation(uint8_t startIndex, uint8_t endIndex, float fps) {
+      curAnimationFrame = startIndex;
+      startAnimationFrame = startIndex;  
+      endAnimationFrame = endIndex;
+      animationFps = fps;
     }
 
     void update(float fElapsedTime) {
@@ -125,16 +134,29 @@ class Duck : public PNJ {
 
     enum DuckState {
       STATE_IDLE = 0,
-      STATE_WALKING = 1,
+      STATE_WANDERING= 1,
+      STATE_FOLLOWING = 2,
+      STATE_FLEEING = 3,
       //STATE_RUNNING = 2,
       //STATE_FLYING = 3,
       //STATE_SWIMMING = 4,
     };
 
+    enum DuckAnimations {
+      ANIM_IDLE = 0,
+      ANIM_WALK = 1,
+      ANIM_RUN = 2,
+      ANIM_FLY = 3,
+      ANIM_SWIM = 4,
+    };
+   
+    bool isLeader = false;
+    bool isRunning = false; //to calc speed
+
     uint8_t state = STATE_IDLE;
     uint8_t type = MALE;
 
-    Duck(float x, float y, string name, olc::Pixel color) : PNJ(x,y,name){
+    Duck(float x, float y, string name, olc::Pixel color, bool leader=false) : PNJ(x,y,name){
       cout << "Duck constructor" << endl; 
       this->speed = 1.0f; //tile per second?
       this->color = color;
@@ -145,10 +167,65 @@ class Duck : public PNJ {
       cout << "Duck destructor" << endl;
     }
 
-    //given other pnjs, player pos and tilemap 2d array, update duck logic
-    void DuckLogic() {
+    void setAnimation(uint8_t anim) {
 
-      //TODO: function receives player pos, tilemap content, and other pnjs
+      uint8_t startIndex = 0;
+      uint8_t endIndex = 0;
+      uint8_t fps = 1;
+
+      switch(anim) {
+        case ANIM_IDLE:
+          startIndex = 0;
+          endIndex = 3;
+          fps=1;
+          break;
+        case ANIM_WALK:
+          startIndex = 4;
+          endIndex = 7;
+          break;
+        case ANIM_RUN:
+          startIndex = 8;
+          endIndex = 11;
+          fps = 3;
+          break;
+        case ANIM_FLY:
+          startIndex = 12;
+          endIndex = 15;
+          break;
+        case ANIM_SWIM:
+          startIndex = 16;
+          endIndex = 19;
+          break;
+      }
+      PNJ::setAnimation(startIndex, endIndex, fps);
+    }
+
+    void startIdling() {
+      state = STATE_IDLE;
+      setAnimation(ANIM_IDLE);
+    }
+
+    void startWandering() {
+      state = STATE_WANDERING;
+      setAnimation(ANIM_WALK);
+    }
+
+    void startFollowing(Duck * duckToFollow) {
+      state = STATE_FOLLOWING;
+      setAnimation(ANIM_WALK);
+    }
+
+    void startFleeing(olc::vf2d awayFrom) {
+      state = STATE_FLEEING;
+      //todo: calc flee vector
+      setAnimation(ANIM_FLY);
+    }
+
+    //given other pnjs, player pos and tilemap 2d array, update duck logic
+    void DuckLogic(Game* game) {
+
+      //game contains receives player pos, tilemap content, and other pnjs
+      
       //uint8_t map[TILES_X][TILES_Y];
       //Player player = Player();
       //vector<PNJ*> pnjs;
@@ -285,6 +362,12 @@ class Game {
     Game() {
       player = Player();
       tileMap = TileMap();
+
+       //create some PNJs
+      addPNJ(new Duck(0.0f,0.0f,"Albert", olc::BLUE, true));
+      addPNJ(new Duck(5.0f,5.0f,"Bernard", olc::GREEN));
+      addPNJ(new Duck(12.0f,12.0f,"Charles", olc::YELLOW));
+      addPNJ(new Duck(-15.0f,-15.0f,"Denis", olc::RED));
     }
 
     void addPNJ(PNJ* pnj) {
@@ -295,6 +378,7 @@ class Game {
       player.move(dx, dy);
     }
 
+    //world pos is the integer value of the player pos
     olc::vi2d getWorldPos() {
       return player.getPosI();
     } 
@@ -308,9 +392,13 @@ class Game {
     }
 
     void update(float fElapsedTime) {
+
       //update player
       //update pnjs
       //update tilemap
+
+      //reset player moved flag !
+      player.hasMoved = false;
     }
 };
 
@@ -415,18 +503,13 @@ class GameRenderer : public olc::PixelGameEngine {
       //Set random seed
       srand(SEED);
 
-      //create some PNJs
-      game.addPNJ(new Duck(0.0f,0.0f,"Albert", olc::BLUE));
-      game.addPNJ(new Duck(5.0f,5.0f,"Bernard", olc::GREEN));
-      game.addPNJ(new Duck(12.0f,12.0f,"Charles", olc::YELLOW));
-      game.addPNJ(new Duck(-15.0f,-15.0f,"Denis", olc::RED));
-      
-
       return true;
     }
 
     virtual bool OnUserUpdate(float fElapsedTime) {  
+
       fTotalTime+=fElapsedTime;
+
       // Handle Input
       if (GetKey(olc::Key::D).bPressed){
         bShowDebug = !bShowDebug;
@@ -435,9 +518,6 @@ class GameRenderer : public olc::PixelGameEngine {
 
       if(GetKey(olc::Key::P).bPressed)
         bShowPerlin = !bShowPerlin;
-
-      //reset player moved flag !
-      game.player.hasMoved = false;
 
       if(GetKey(olc::Key::UP).bHeld) 
         game.movePlayer(0,-15.0f * fElapsedTime);  
@@ -466,16 +546,16 @@ class GameRenderer : public olc::PixelGameEngine {
         game.generateTileMap();
         lastWorldPos = newWorldPos;
       }
-
-      //update game logic
-      game.update(fElapsedTime);
       
       //no need to clear screen if we draw all tiles ! (insert smart gif here)
       RenderTileMap();
 
       //render and update PNJs
       RenderPNJs(fElapsedTime);
-
+      
+      //update game logic
+      game.update(fElapsedTime);
+      
       return true;
     }
 };
