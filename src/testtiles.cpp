@@ -15,27 +15,52 @@ using namespace std;
 
 #define SCREEN_W 480
 #define SCREEN_H 480
+
 #define SCREEN_PIXELSIZE 1
-#define TILE_WIDTH 16
-#define TILE_HEIGHT 16
-#define TILES_X 30
-#define TILES_Y 30
+
+//#define TILES_1PX 
+//#define TILES_2PX
+//#define TILES_4PX
+#define TILES_8PX
+//#define TILES_16PX
+
+#ifdef TILES_1PX
+  #define TILE_WIDTH 1
+  #define TILE_HEIGHT 1
+  #define TILE_SET "./sprites/testtiles/tileset1px.png"
+#endif
+#ifdef TILES_2PX
+  #define TILE_WIDTH 2
+  #define TILE_HEIGHT 2
+  #define TILE_SET "./sprites/testtiles/tileset2px.png"
+#endif
+#ifdef TILES_4PX
+  #define TILE_WIDTH 2
+  #define TILE_HEIGHT 2
+  #define TILE_SET "./sprites/testtiles/tileset4px.png"
+#endif
+#ifdef TILES_8PX
+  #define TILE_WIDTH 8
+  #define TILE_HEIGHT 8
+  #define TILE_SET "./sprites/testtiles/tileset8px.png"
+#endif
+#ifdef TILES_16PX
+  #define TILE_WIDTH 16
+  #define TILE_HEIGHT 16
+  #define TILE_SET "./sprites/testtiles/tileset16px.png"
+#endif
+
+#define TILES_X SCREEN_W/TILE_WIDTH
+#define TILES_Y SCREEN_H/TILE_HEIGHT
 #define TILEMAP_WIDTH (TILES_X * TILE_WIDTH)
 #define TILEMAP_HEIGHT (TILES_Y * TILE_HEIGHT)
 
-enum Tiles { 
+enum Tiles {
   TILE_NOTHING = 0, 
-
-  TILE_DIRT = 1,
-  TILE_EARTH = 2,
-
-  TILE_GRASS1 = 3,
-  TILE_GRASS2 = 4,
-  TILE_GRASS3 = 5,
-  TILE_GRASS4 = 6,
-
-  TILE_WHEAT = 7,
-  TILE_ROCK = 8,
+  TILE_WATER= 1,
+  TILE_DIRT = 2,
+  TILE_GRASS = 3,
+  TILE_WHEAT = 4,
 };
 
 class TileMap {
@@ -47,7 +72,7 @@ class TileMap {
     TileMap() {
       for (auto y = 0; y < TILES_Y; y++) {
         for (auto x = 0; x < TILES_X; x++) {
-          map[x][y] = TILE_NOTHING;
+          map[x][y] = TILE_WATER;
         }
       }
     }
@@ -92,25 +117,31 @@ class TileMap {
 
     private:
       uint8_t toTile(uint8_t noise) {
-        uint8_t tile = 0;
-        if (noise > 200) {
-          tile = TILE_NOTHING;
-        } else if (noise > 160) {
-          tile = TILE_EARTH;
-        } else if (noise > 140) {
+        
+        //Default to nothing but whouldn't be seen if every value is mapped
+        uint8_t tile = TILE_NOTHING;
+
+        //Tiles rules:
+        //Water can be only in grass
+        //Wheat can be only in grass
+        //Dirt can be only in grass
+
+        //Distribution of tiles:
+        //Water: 5%
+        //Wheat: 20%
+        //Dirt: 10%
+        //Grass: 65%         
+
+        if(noise < 65) {
+          tile = TILE_WATER;
+        } else if(noise < 67) {
           tile = TILE_DIRT;
-        } else if (noise > 80) {
-          tile = TILE_GRASS1;
-        }  
-        else if (noise > 78) {
-          tile = TILE_GRASS2;
-        }
-        else if (noise > 76) {
-          tile = TILE_GRASS3;
-        }
-        else if (noise > 60) {
+        } else if(noise < 192) {
+          tile = TILE_GRASS;
+        } else {
           tile = TILE_WHEAT;
         }
+       
         return tile;
       }
 };
@@ -125,10 +156,10 @@ public:
 
 private:
   float fTotalTime = 0.0f;
-  bool bShowDebug = false;
+  bool bShowDebug = true;
   bool bShowPerlin = false;
   bool bDrawMask = false;
-  bool bUseDebugSprites = false;
+  bool bUseDebugSprites = true;
 
   TileMap* tileMap;
   std::unique_ptr<olc::Sprite> sprTileSheet;
@@ -187,10 +218,10 @@ protected:
   { 
     // Initialize the tile map
     tileMap = new TileMap();
-    sprTileMap = std::make_unique<olc::Sprite>(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT);
-    tileMap->randomize(1230);
+    sprTileMap = std::make_unique<olc::Sprite>(TILEMAP_WIDTH, TILEMAP_HEIGHT);
+
     // Load the sprites
-    sprTileSheet = std::make_unique<olc::Sprite>("./sprites/testtiles/tileset16px.png");
+    sprTileSheet = std::make_unique<olc::Sprite>(TILE_SET);
     return true;
   }
 
@@ -223,7 +254,6 @@ protected:
 
     
     Clear(olc::BLACK);
-    //tileMap->randomize(fTotalTime);
     tileMap->generate(playerPos.x, playerPos.y, 0);
     RenderTileMap();
 
