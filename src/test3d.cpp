@@ -6,8 +6,6 @@
 #define OLC_PGEX_FONT
 #include "../lib/olcPGEX_Font.h"
 
-#include "face.h"
-
 #define SCREEN_W 320
 #define SCREEN_H 240
 #define SCREEN_PIXELSIZE 1
@@ -85,16 +83,15 @@ private:
   float fAccumulatedTime = 0.0f;
   float fTargetFrameTime = 100/1000.0f;
 
-  bool bDrawMask = true;
   bool bShowFps = true;
-  bool bProfiling = false;
-  int nMaskRadius = SCREEN_H / 2;
+  bool bShowDebug = true;
 
   std::unique_ptr<olc::Font> pixelFont48;
 
   mesh meshFace;
 	mat4x4 matProj;
-	float fTheta;
+
+	float fTheta = 2* 3.14159f;
 
 	void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m)
 	{
@@ -108,16 +105,6 @@ private:
 			o.x /= w; o.y /= w; o.z /= w;
 		}
 	}
-
-  void DrawMask() {
-    for (int y = 0; y < SCREEN_H; y++) {
-      for (int x = 0; x < SCREEN_W; x++) {
-        if (sqrt((x - SCREEN_W / 2) * (x - SCREEN_W / 2) + (y - SCREEN_H / 2) * (y - SCREEN_H / 2)) > nMaskRadius) {
-          Draw(x, y, olc::BLACK);
-        }
-      }
-    }
-  }
 
   virtual bool OnUserCreate()
   {
@@ -148,10 +135,10 @@ private:
 
     Clear(olc::BLACK);
 
-    //input to toggle mask
-    if (GetKey(olc::Key::M).bPressed)
+    //input to toggle debug text
+    if (GetKey(olc::Key::B).bPressed)
     {
-      bDrawMask = !bDrawMask;
+      bShowDebug = !bShowDebug;
     }
 
     //input to toggle fps
@@ -160,15 +147,20 @@ private:
       bShowFps = !bShowFps;
     }
 
-    //input to toggle profiling
-    if (GetKey(olc::Key::P).bPressed)
-    {
-      bProfiling = !bProfiling;
-    }
-
     // Set up rotation matrices
 		mat4x4 matRotZ, matRotX;
-		fTheta += 1.0f * fElapsedTime;
+		
+    //DrZoid: disabling rotation for now
+    //fTheta += 1.0f * fElapsedTime;
+
+    // debug
+    if(bShowDebug) {
+      auto text = "fTheta: " + std::to_string(fTheta);
+      auto text_size   = pixelFont48->GetTextSizeProp( text );
+      auto text_centre      = text_size / 2.0f;
+      auto fScale                 = 1.0f;
+      pixelFont48->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} );
+    }
 
 		// Rotation Z
 		matRotZ.m[0][0] = cosf(fTheta);
@@ -230,10 +222,6 @@ private:
 
 		}
   
-    //draw circle mask
-    if(bDrawMask){
-      DrawMask();
-    }
     if(fAccumulatedTime>fTargetFrameTime){
       fAccumulatedTime=0.0f;
     }
