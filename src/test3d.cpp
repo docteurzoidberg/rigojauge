@@ -366,7 +366,9 @@ private:
       pixelFont48->DrawStringPropDecal( {0,static_cast<float>(text_centre.y)}, text, olc::MAGENTA, {fScale, fScale} );
     }
 
-			// Rotation Z
+		meshLoader.verts[0].x += 0.0001f;
+
+		// Rotation Z
 		matRotZ.m[0][0] = cosf(fTheta);
 		matRotZ.m[0][1] = sinf(fTheta);
 		matRotZ.m[1][0] = -sinf(fTheta);
@@ -383,14 +385,19 @@ private:
 		matRotX.m[3][3] = 1;
 		
 		// Draw Triangles
-		for (auto tri : meshFace.tris)
+		for (triangleref tri : meshLoader.tris)
 		{
 			triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
 
+			triangle newtri;
+			newtri.p[0] = *tri.p[0];
+			newtri.p[1] = *tri.p[1];
+			newtri.p[2] = *tri.p[2];
+
 			// Rotate in Z-Axis
-			MultiplyMatrixVector(tri.p[0], triRotatedZ.p[0], matRotZ);
-			MultiplyMatrixVector(tri.p[1], triRotatedZ.p[1], matRotZ);
-			MultiplyMatrixVector(tri.p[2], triRotatedZ.p[2], matRotZ);
+			MultiplyMatrixVector(newtri.p[0], triRotatedZ.p[0], matRotZ);
+			MultiplyMatrixVector(newtri.p[1], triRotatedZ.p[1], matRotZ);
+			MultiplyMatrixVector(newtri.p[2], triRotatedZ.p[2], matRotZ);
 
 			// Rotate in X-Axis
 			MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZX.p[0], matRotX);
