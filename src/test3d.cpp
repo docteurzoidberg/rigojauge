@@ -96,8 +96,9 @@ struct mesh
   }
 };
 
-struct Star {
-	float x, y, z, o;
+struct mat4x4
+{
+	float m[4][4] = { 0 };
 };
 
 struct FaceMesh
@@ -190,12 +191,11 @@ struct FaceMesh
 		}
 	};
 };
-
-struct mat4x4
-{
-	float m[4][4] = { 0 };
-};
  
+struct Star {
+	float x, y, z, o;
+};
+
 class ThreeDimensionRenderer : public olc::PixelGameEngine
 {
 public:
@@ -210,7 +210,8 @@ private:
 
   bool bShowFps = true;
   bool bShowDebug = false;
-
+	
+	//Fonts
   std::unique_ptr<olc::Font> pixelFont48;
 	std::unique_ptr<olc::Font> computerFont20;
 	std::unique_ptr<olc::Font> computerFont28;
@@ -222,7 +223,6 @@ private:
 	//meshLoader.LoadFromObjectFile("./models/face2x.obj");
 
 	mat4x4 matProj;
-
 	float fTheta = 2* 3.14159f;
 
 	//STARFIELD
@@ -230,9 +230,22 @@ private:
 	bool warp = false;
 	float centerX = SCREEN_W / 2;
 	float centerY = SCREEN_H / 2;
-
 	std::vector<Star> stars;
 
+	void InitStartField() {
+		stars.clear();
+		for(int i = 0; i < NUM_STARS; i++){
+			
+			stars.push_back({
+				x: (float)getRandomFloat() * SCREEN_W,
+				y: (float)getRandomFloat() * SCREEN_H,
+				z: (float)getRandomFloat() * SCREEN_W,
+				o: ((float)floor(getRandomFloat() * 99) + 1) / 10
+			});
+		}
+	}
+
+	//GRID
 	const float gridDepth = 1000.0f; // Depth of the grid in the Z direction
 	const float gridHeight = 100.0f; // Height of the grid in the Y direction
 	const float fov = 90.0f; // Field of view in degrees
@@ -253,7 +266,7 @@ private:
 	}
 
 	// Function to project 3D coordinates to 2D screen coordinates
-	olc::vf2d project(float x, float y, float z ) {
+	olc::vf2d Project(float x, float y, float z ) {
 			float screenX = (x / (z * aspectRatio)) * fovRad * SCREEN_W + SCREEN_W / 2.0f;
 			float screenY = (y / z) * fovRad * SCREEN_H + SCREEN_H / 2.0f;
 			return olc::vf2d(screenX, screenY);
@@ -264,35 +277,19 @@ private:
 		font->DrawStringPropDecal(pos, text, col, scale);
 	}
 
-	void InitStartField() {
-		stars.clear();
-		for(int i = 0; i < NUM_STARS; i++){
-			
-			stars.push_back({
-				x: (float)getRandomFloat() * SCREEN_W,
-				y: (float)getRandomFloat() * SCREEN_H,
-				z: (float)getRandomFloat() * SCREEN_W,
-				o: ((float)floor(getRandomFloat() * 99) + 1) / 10
-			});
-		}
-	}
-
 	void DrawGrid() {
-		int screenWidth = ScreenWidth();
-    int screenHeight = ScreenHeight();
-		
 		// Draw the one-axis perspective grid (Z-axis lines)
 		for (int i = -GRID_SIZE; i <= GRID_SIZE; ++i) {
 			for (int j = 1; j < gridDepth; j += GRID_SIZE) {
 				
 				// Lines parallel to the X-axis
-				olc::vf2d startX = project(-GRID_SIZE * GRID_SIZE, gridHeight, j);
-				olc::vf2d endX = project(GRID_SIZE * GRID_SIZE, gridHeight, j);
+				olc::vf2d startX = Project(-GRID_SIZE * GRID_SIZE, gridHeight, j);
+				olc::vf2d endX = Project(GRID_SIZE * GRID_SIZE, gridHeight, j);
 				DrawLine(startX, endX, olc::WHITE);
 
 				// Lines parallel to the Z-axis
-				olc::vf2d startZ = project(i * GRID_SIZE, gridHeight, j);
-				olc::vf2d endZ = project(i * GRID_SIZE, gridHeight, j + GRID_SIZE);
+				olc::vf2d startZ = Project(i * GRID_SIZE, gridHeight, j);
+				olc::vf2d endZ = Project(i * GRID_SIZE, gridHeight, j + GRID_SIZE);
 				DrawLine(startZ, endZ, olc::WHITE);
 			}
 		}
@@ -410,10 +407,8 @@ private:
 			DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
 				triProjected.p[1].x, triProjected.p[1].y,
 				triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
-
 		}
 	}
-
 
   virtual bool OnUserCreate()
   {
@@ -421,8 +416,6 @@ private:
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
 		computerFont20 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_20.png");
 		computerFont28 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_28.png");
-
-    //meshLoader.LoadFromObjectFile("./models/face2x.obj");
 
     // Projection Matrix
 		float fNear = 0.1f;
@@ -468,7 +461,7 @@ private:
 		DrawGrid();
 
 		Draw3dFace();
-		
+
 		DrawFPS(GetFPS());
   
     if(fAccumulatedTime>fTargetFrameTime){
@@ -479,8 +472,8 @@ private:
 };
 
 int main() {
-    ThreeDimensionRenderer renderer;
-    if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
-      renderer.Start();
-    return 0;
+	ThreeDimensionRenderer renderer;
+	if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
+		renderer.Start();
+	return 0;
 }
