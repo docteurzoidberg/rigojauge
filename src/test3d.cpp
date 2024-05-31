@@ -11,7 +11,7 @@
 #define SCREEN_PIXELSIZE 1
 
 #define NUM_STARS 750
-#define GRID_SIZE 10
+#define GRID_SIZE 12
 
 #include <string>
 #include <fstream>
@@ -29,6 +29,11 @@ std::uniform_real_distribution<float> dis(0.0, 1.0);
 float getRandomFloat() {
     return dis(gen);
 }
+
+struct vec2d
+{
+	float x, y;
+};
 
 struct vec3d
 {
@@ -192,7 +197,8 @@ struct FaceMesh
 	};
 };
  
-struct Star {
+struct Star 
+{
 	float x, y, z, o;
 };
 
@@ -216,6 +222,7 @@ private:
 	std::unique_ptr<olc::Font> computerFont20;
 	std::unique_ptr<olc::Font> computerFont28;
 
+	//3D FACE
   FaceMesh meshFace;
 
 	//to load the model's obj, and generate the tri vector initalization from console output, uncomment:
@@ -232,22 +239,9 @@ private:
 	float centerY = SCREEN_H / 2;
 	std::vector<Star> stars;
 
-	void InitStartField() {
-		stars.clear();
-		for(int i = 0; i < NUM_STARS; i++){
-			
-			stars.push_back({
-				x: (float)getRandomFloat() * SCREEN_W,
-				y: (float)getRandomFloat() * SCREEN_H,
-				z: (float)getRandomFloat() * SCREEN_W,
-				o: ((float)floor(getRandomFloat() * 99) + 1) / 10
-			});
-		}
-	}
-
 	//GRID
 	const float gridDepth = 1000.0f; // Depth of the grid in the Z direction
-	const float gridHeight = 100.0f; // Height of the grid in the Y direction
+	const float gridHeight = 120.0f; // Height of the grid in the Y direction
 	const float fov = 90.0f; // Field of view in degrees
 	const float aspectRatio = static_cast<float>(SCREEN_W) / static_cast<float>(SCREEN_H);
 	const float fovRad = 1.0f / tan(fov * 0.5f / 180.0f * 3.14159f);
@@ -266,15 +260,28 @@ private:
 	}
 
 	// Function to project 3D coordinates to 2D screen coordinates
-	olc::vf2d Project(float x, float y, float z ) {
+	vec2d Project(float x, float y, float z ) {
 			float screenX = (x / (z * aspectRatio)) * fovRad * SCREEN_W + SCREEN_W / 2.0f;
 			float screenY = (y / z) * fovRad * SCREEN_H + SCREEN_H / 2.0f;
-			return olc::vf2d(screenX, screenY);
+			return {screenX, screenY};
 	}
 
 	//for esp:
 	void DrawText(olc::Font* font, const std::string& text, const olc::vf2d& pos, const olc::Pixel& col, const olc::vf2d& scale = {1.0f, 1.0f}) {
 		font->DrawStringPropDecal(pos, text, col, scale);
+	}
+
+	void InitStartField() {
+		stars.clear();
+		for(int i = 0; i < NUM_STARS; i++){
+			
+			stars.push_back({
+				x: (float)getRandomFloat() * SCREEN_W,
+				y: (float)getRandomFloat() * SCREEN_H,
+				z: (float)getRandomFloat() * SCREEN_W,
+				o: ((float)floor(getRandomFloat() * 99) + 1) / 10
+			});
+		}
 	}
 
 	void DrawGrid() {
@@ -283,14 +290,14 @@ private:
 			for (int j = 1; j < gridDepth; j += GRID_SIZE) {
 				
 				// Lines parallel to the X-axis
-				olc::vf2d startX = Project(-GRID_SIZE * GRID_SIZE, gridHeight, j);
-				olc::vf2d endX = Project(GRID_SIZE * GRID_SIZE, gridHeight, j);
-				DrawLine(startX, endX, olc::WHITE);
+				vec2d startX = Project(-GRID_SIZE * GRID_SIZE, gridHeight, j);
+				vec2d endX = Project(GRID_SIZE * GRID_SIZE, gridHeight, j);
+				DrawLine(startX.x, startX.y, endX.x, endX.y, olc::WHITE);
 
 				// Lines parallel to the Z-axis
-				olc::vf2d startZ = Project(i * GRID_SIZE, gridHeight, j);
-				olc::vf2d endZ = Project(i * GRID_SIZE, gridHeight, j + GRID_SIZE);
-				DrawLine(startZ, endZ, olc::WHITE);
+				vec2d startZ = Project(i * GRID_SIZE, gridHeight, j);
+				vec2d endZ = Project(i * GRID_SIZE, gridHeight, j + GRID_SIZE);
+				DrawLine(startZ.x, startZ.y, endZ.x, endZ.y, olc::WHITE);
 			}
 		}
 	}
@@ -410,8 +417,7 @@ private:
 		}
 	}
 
-  virtual bool OnUserCreate()
-  {
+  virtual bool OnUserCreate() {
 		// Load Fonts
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
 		computerFont20 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_20.png");
@@ -436,8 +442,7 @@ private:
     return true;
   }
 
-  virtual bool OnUserUpdate(float fElapsedTime)
-  {
+  virtual bool OnUserUpdate(float fElapsedTime) {
     fAccumulatedTime += fElapsedTime;
 
     Clear(olc::BLACK);
