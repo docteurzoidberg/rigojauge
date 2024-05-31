@@ -389,15 +389,10 @@ private:
 		{
 			triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
 
-			triangle newtri;
-			newtri.p[0] = *tri.p[0];
-			newtri.p[1] = *tri.p[1];
-			newtri.p[2] = *tri.p[2];
-
 			// Rotate in Z-Axis
-			MultiplyMatrixVector(newtri.p[0], triRotatedZ.p[0], matRotZ);
-			MultiplyMatrixVector(newtri.p[1], triRotatedZ.p[1], matRotZ);
-			MultiplyMatrixVector(newtri.p[2], triRotatedZ.p[2], matRotZ);
+			MultiplyMatrixVector(*tri.p[0], triRotatedZ.p[0], matRotZ);
+			MultiplyMatrixVector(*tri.p[1], triRotatedZ.p[1], matRotZ);
+			MultiplyMatrixVector(*tri.p[2], triRotatedZ.p[2], matRotZ);
 
 			// Rotate in X-Axis
 			MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZX.p[0], matRotX);
