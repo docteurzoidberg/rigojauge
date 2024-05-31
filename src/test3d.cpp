@@ -1,4 +1,3 @@
-
 #define OLC_PGE_APPLICATION
 
 #include "../lib/olcPixelGameEngine.h"
@@ -40,6 +39,12 @@ struct vec3d
 	float x, y, z;
 };
 
+struct triangleref
+{
+	vec3d* p[3];
+};
+
+
 struct triangle
 {
 	vec3d p[3];
@@ -47,7 +52,11 @@ struct triangle
 
 struct mesh
 {
-	std::vector<triangle> tris;
+	std::vector<triangleref> tris;
+
+	// Local cache of verts
+	std::vector<vec3d> verts;
+
   
 	bool LoadFromObjectFile(std::string sFilename)
 	{
@@ -56,9 +65,6 @@ struct mesh
 			return false;
 
 		std::cout << "{" << std::endl;
-
-		// Local cache of verts
-		std::vector<vec3d> verts;
 
 		while (!f.eof())
 		{
@@ -81,17 +87,21 @@ struct mesh
 			{
 				int f[3];
 				s >> junk >> f[0] >> f[1] >> f[2];
-				triangle t;
-				t.p[0] = verts[f[0] - 1];
-				t.p[1] = verts[f[1] - 1];
-				t.p[2] = verts[f[2] - 1];
+				triangleref t;
+				
+				//Replace values with references to the verts vector
+				//t.p[0] = verts[f[0] - 1];
+				//t.p[1] = verts[f[1] - 1];
+				//t.p[2] = verts[f[2] - 1];
+				t.p[0] = &verts[f[0] - 1];
+				t.p[1] = &verts[f[1] - 1];
+				t.p[2] = &verts[f[2] - 1];
 
-				std::cout << "{{ ";
-				std::cout << "{" << t.p[0].x  << "," << t.p[0].y << "," << t.p[0].z << "}, " ;
-				std::cout << "{" << t.p[1].x  << "," << t.p[1].y << "," << t.p[1].z << "}, " ;
-				std::cout << "{" << t.p[2].x  << "," << t.p[2].y << "," << t.p[2].z << "}" ; 
-
-				std::cout << " }}," << std::endl; 
+				//std::cout << "{{ ";
+				//std::cout << "{" << t.p[0].x  << "," << t.p[0].y << "," << t.p[0].z << "}, " ;
+				//std::cout << "{" << t.p[1].x  << "," << t.p[1].y << "," << t.p[1].z << "}, " ;
+				//std::cout << "{" << t.p[2].x  << "," << t.p[2].y << "," << t.p[2].z << "}" ; 
+				//std::cout << " }}," << std::endl; 
 
 				tris.push_back(t);
 			}
@@ -226,9 +236,8 @@ private:
   FaceMesh meshFace;
 
 	//to load the model's obj, and generate the tri vector initalization from console output, uncomment:
-	//mesh meshLoader;
-	//meshLoader.LoadFromObjectFile("./models/face2x.obj");
-
+	mesh meshLoader;
+	
 	mat4x4 matProj;
 	float fTheta = 2* 3.14159f;
 
@@ -418,6 +427,9 @@ private:
 	}
 
   virtual bool OnUserCreate() {
+
+		meshLoader.LoadFromObjectFile("./models/face2x.obj");
+
 		// Load Fonts
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
 		computerFont20 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_20.png");
