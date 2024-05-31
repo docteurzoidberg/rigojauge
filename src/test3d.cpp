@@ -12,14 +12,17 @@
 #define NUM_STARS 750
 #define GRID_SIZE 12
 
-//#define ENABLE_FACE_ROTATION 1
-//#define ENABLE_STARFIELD 1
-//#define ENABLE_GRID 0
-#define ENABLE_FPS 1
+//#define ENABLE_MODEL_LOADER
+//#define ENABLE_FACE_ROTATION
+//#define ENABLE_STARFIELD
+//#define ENABLE_GRID
+#define ENABLE_FPS 
 
 #include <string>
-#include <fstream>
-#include <strstream>
+#ifdef ENABLE_MODEL_LOADER
+  #include <fstream>
+  #include <strstream>
+#endif
 #include <algorithm>
 #include <iostream>
 #include <random>
@@ -56,9 +59,11 @@ struct triangle {
 	vec3d p[3];
 };
 
-struct mesh {
+#ifdef ENABLE_MODEL_LOADER
+struct MeshLoader {
+
 	// Local cache of verts
-	std::vector<vec3d> verts; 
+	std::vector<vec3d> verts;
 
 	// Local cache of faces
 	std::vector<face> faces;
@@ -66,14 +71,11 @@ struct mesh {
 	// Local cache of tris referencing verts
 	std::vector<triangleref> tris;
 
-  
 	bool LoadFromObjectFile(std::string sFilename)
 	{
 		std::ifstream f(sFilename);
 		if (!f.is_open())
 			return false;
-
-		//std::cout << "{" << std::endl;
 
 		while (!f.eof())
 		{
@@ -105,8 +107,6 @@ struct mesh {
 				tris.push_back(t);
 			}
 		}
-		//std::cout << "}" << std::endl;
-
 
 		//Output the verts vector to console
 		std::cout << "std::vector<vec3d> verts = {" << std::endl;
@@ -126,6 +126,11 @@ struct mesh {
 
     return true;
   }
+};
+#endif
+
+struct star {
+	float x, y, z, o;
 };
 
 struct mat4x4 {
@@ -383,8 +388,27 @@ struct FaceMesh {
 	*/
 };
  
-struct Star {
-	float x, y, z, o;
+struct StarField {
+  std::vector<star> stars;
+  int focalLength = SCREEN_W*2;
+  bool warp = false;
+  float centerX = SCREEN_W / 2;
+  float centerY = SCREEN_H / 2;
+  void Init() {
+    for(int i = 0; i < NUM_STARS; i++){
+      stars.push_back({
+        x: (float)getRandomFloat() * SCREEN_W,
+        y: (float)getRandomFloat() * SCREEN_H,
+        z: (float)getRandomFloat() * SCREEN_W,
+        o: ((float)floor(getRandomFloat() * 99) + 1) / 10
+      });
+    }
+  }
+};
+
+struct Grid {
+  const float gridDepth = 1000.0f; // Depth of the grid in the Z direction
+  const float gridHeight = 120.0f; // Height of the grid in the Y direction
 };
 
 class ThreeDimensionRenderer : public olc::PixelGameEngine {
@@ -394,46 +418,39 @@ public:
   }
 
 private:
-  float fAccumulatedTime = 0.0f;
-  float fTargetFrameTime = 100/1000.0f;
 
   bool bShowFps = true;
   bool bShowDebug = false;
+
+  const float fAspectRatio = static_cast<float>(SCREEN_W) / static_cast<float>(SCREEN_H);
+  const float fFov = 90.0f; // Field of view in degrees
+	const float fFovRad = 1.0f / tan(fFov * 0.5f / 180.0f * 3.14159f);
+
+  float fAccumulatedTime = 0.0f;
+  float fTargetFrameTime = 100/1000.0f;
+  float fTheta = 2* 3.14159f; 
 	
+  mat4x4 matProj;
+
 	//Fonts
   std::unique_ptr<olc::Font> pixelFont48;
 	std::unique_ptr<olc::Font> computerFont20;
 	std::unique_ptr<olc::Font> computerFont28;
 
-	//3D FACE
   FaceMesh meshFace;
+  StarField starField;
+  Grid grid;
 
-	//to load the model's obj, and generate the tri vector initalization from console output, uncomment:
-	mesh meshLoader;
+  #ifdef ENABLE_MODEL_LOADER
+    //to load the model's obj, and generate the tri vector initalization from console output
+    mesh meshLoader;
+  #endif
 	
-	mat4x4 matProj;
-	float fTheta = 2* 3.14159f;
-
-	//STARFIELD
-	int focalLength = SCREEN_W*2;
-	bool warp = false;
-	float centerX = SCREEN_W / 2;
-	float centerY = SCREEN_H / 2;
-	std::vector<Star> stars;
-
-	//GRID
-	const float gridDepth = 1000.0f; // Depth of the grid in the Z direction
-	const float gridHeight = 120.0f; // Height of the grid in the Y direction
-	const float fov = 90.0f; // Field of view in degrees
-	const float aspectRatio = static_cast<float>(SCREEN_W) / static_cast<float>(SCREEN_H);
-	const float fovRad = 1.0f / tan(fov * 0.5f / 180.0f * 3.14159f);
-
 	void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
 		o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
 		o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
 		o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
 		float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
-
 		if (w != 0.0f)
 		{
 			o.x /= w; o.y /= w; o.z /= w;
@@ -442,8 +459,8 @@ private:
 
 	// Function to project 3D coordinates to 2D screen coordinates
 	vec2d Project(float x, float y, float z ) {
-		float screenX = (x / (z * aspectRatio)) * fovRad * SCREEN_W + SCREEN_W / 2.0f;
-		float screenY = (y / z) * fovRad * SCREEN_H + SCREEN_H / 2.0f;
+		float screenX = (x / (z * fAspectRatio)) * fFovRad * SCREEN_W + SCREEN_W / 2.0f;
+		float screenY = (y / z) * fFovRad * SCREEN_H + SCREEN_H / 2.0f;
 		return {screenX, screenY};
 	}
 
@@ -452,52 +469,37 @@ private:
 		font->DrawStringPropDecal(pos, text, col, scale);
 	}
 
-	void InitStartField() {
-		stars.clear();
-		for(int i = 0; i < NUM_STARS; i++){
-			stars.push_back({
-				x: (float)getRandomFloat() * SCREEN_W,
-				y: (float)getRandomFloat() * SCREEN_H,
-				z: (float)getRandomFloat() * SCREEN_W,
-				o: ((float)floor(getRandomFloat() * 99) + 1) / 10
-			});
-		}
-	}
-
 	void DrawGrid() {
 		// Draw the one-axis perspective grid (Z-axis lines)
 		for (int i = -GRID_SIZE; i <= GRID_SIZE; ++i) {
-			for (int j = 1; j < gridDepth; j += GRID_SIZE) {
-				
+			for (int j = 1; j < grid.gridDepth; j += GRID_SIZE) {
 				// Lines parallel to the X-axis
-				vec2d startX = Project(-GRID_SIZE * GRID_SIZE, gridHeight, j);
-				vec2d endX = Project(GRID_SIZE * GRID_SIZE, gridHeight, j);
+				vec2d startX = Project(-GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
+				vec2d endX = Project(GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
 				DrawLine(startX.x, startX.y, endX.x, endX.y, olc::WHITE);
 
 				// Lines parallel to the Z-axis
-				vec2d startZ = Project(i * GRID_SIZE, gridHeight, j);
-				vec2d endZ = Project(i * GRID_SIZE, gridHeight, j + GRID_SIZE);
+				vec2d startZ = Project(i * GRID_SIZE, grid.gridHeight, j);
+				vec2d endZ = Project(i * GRID_SIZE, grid.gridHeight, j + GRID_SIZE);
 				DrawLine(startZ.x, startZ.y, endZ.x, endZ.y, olc::WHITE);
 			}
 		}
 	}
 
 	void DrawStarfield() {
-
 		int pixelX;
 		int pixelY;
 		int pixelRadius;
-
-		for(auto &star : stars){
+    for(auto &star : starField.stars){
 			star.z-= 0.1f;
 			if(star.z <= 0){
 				star.z = SCREEN_W;
 			}
-			pixelX = (star.x - centerX) * (focalLength / star.z);
-			pixelX += centerX;
-			pixelY = (star.y - centerY) * (focalLength / star.z);
-			pixelY += centerY;
-			pixelRadius = 1 * (focalLength / star.z);
+			pixelX = (star.x - starField.centerX) * (starField.focalLength / star.z);
+			pixelX += starField.centerX;
+			pixelY = (star.y - starField.centerY) * (starField.focalLength / star.z);
+			pixelY += starField.centerY;
+			pixelRadius = 1 * (starField.focalLength / star.z);
 			uint8_t brightness = star.o * 255;
 			auto pixelColor = olc::Pixel(brightness,brightness,brightness);
 			FillRect(pixelX, pixelY, pixelRadius, pixelRadius, pixelColor);
@@ -535,7 +537,7 @@ private:
       auto text_size   = pixelFont48->GetTextSizeProp( text );
       //auto text_centre      = text_size / 2.0f;
       auto fScale                 = 1.0f;
-      pixelFont48->DrawStringPropDecal( {0,SCREEN_H-text_size.y}, text, olc::MAGENTA, {fScale, fScale} );
+      pixelFont48->DrawStringPropDecal( {0,(float)SCREEN_H-text_size.y}, text, olc::MAGENTA, {fScale, fScale} );
     }
 
 		//DrZoid: test point movement
@@ -614,8 +616,14 @@ private:
 
   virtual bool OnUserCreate() {
 
-		//meshLoader.LoadFromObjectFile("./models/face2x.obj");
+    #ifdef ENABLE_MODEL_LOADER 
+		  meshLoader.LoadFromObjectFile("./models/face2x.obj");
+    #endif
+
+    //Load model's triangles from the mesh
 		meshFace.LoadModel();
+
+    starField.Init();
 
 		// Load Fonts
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
@@ -636,7 +644,7 @@ private:
 		matProj.m[2][3] = 1.0f;
 		matProj.m[3][3] = 0.0f;
 
-		InitStartField();
+		//InitStartField();
 
     return true;
   }
@@ -656,7 +664,6 @@ private:
     if (GetKey(olc::Key::F).bPressed) {
       bShowFps = !bShowFps;
     }
-
 		
     if (GetKey(olc::Key::UP).bPressed) {
       triIndex++;
