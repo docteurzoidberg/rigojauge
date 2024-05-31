@@ -442,9 +442,9 @@ private:
 
 	// Function to project 3D coordinates to 2D screen coordinates
 	vec2d Project(float x, float y, float z ) {
-			float screenX = (x / (z * aspectRatio)) * fovRad * SCREEN_W + SCREEN_W / 2.0f;
-			float screenY = (y / z) * fovRad * SCREEN_H + SCREEN_H / 2.0f;
-			return {screenX, screenY};
+		float screenX = (x / (z * aspectRatio)) * fovRad * SCREEN_W + SCREEN_W / 2.0f;
+		float screenY = (y / z) * fovRad * SCREEN_H + SCREEN_H / 2.0f;
+		return {screenX, screenY};
 	}
 
 	//for esp:
@@ -455,7 +455,6 @@ private:
 	void InitStartField() {
 		stars.clear();
 		for(int i = 0; i < NUM_STARS; i++){
-			
 			stars.push_back({
 				x: (float)getRandomFloat() * SCREEN_W,
 				y: (float)getRandomFloat() * SCREEN_H,
