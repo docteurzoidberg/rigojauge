@@ -12,6 +12,11 @@
 #define NUM_STARS 750
 #define GRID_SIZE 12
 
+//#define ENABLE_FACE_ROTATION 1
+//#define ENABLE_STARFIELD 1
+//#define ENABLE_GRID 0
+#define ENABLE_FPS 1
+
 #include <string>
 #include <fstream>
 #include <strstream>
@@ -31,33 +36,27 @@ float getRandomFloat() {
     return dis(gen);
 }
 
-struct vec2d
-{
+struct vec2d {
 	float x, y;
 };
 
-struct vec3d
-{
+struct vec3d {
 	float x, y, z;
 };
 
-struct face
-{
+struct face {
 	int f[3];
 };
 
-struct triangleref
-{
+struct triangleref {
 	vec3d* p[3];
 };
 
-struct triangle
-{
+struct triangle {
 	vec3d p[3];
 };
 
-struct mesh
-{
+struct mesh {
 	// Local cache of verts
 	std::vector<vec3d> verts; 
 
@@ -90,7 +89,6 @@ struct mesh
 			{
 				vec3d v;
 				s >> junk >> v.x >> v.y >> v.z;
-				//std::cout << "{" << v.x  << "," << v.y << "," << v.z << "}," << std::endl;
 				verts.push_back(v);
 			}
 
@@ -100,23 +98,10 @@ struct mesh
 				s >> junk >> f[0] >> f[1] >> f[2];
 				faces.push_back({f[0], f[1], f[2]});
 				
-				
-				//Replace values with references to the verts vector
-				//t.p[0] = verts[f[0] - 1];
-				//t.p[1] = verts[f[1] - 1];
-				//t.p[2] = verts[f[2] - 1];
-
 				triangleref t;
 				t.p[0] = &verts[f[0] - 1];
 				t.p[1] = &verts[f[1] - 1];
 				t.p[2] = &verts[f[2] - 1];
-
-				//std::cout << "{{ ";
-				//std::cout << "{" << t.p[0].x  << "," << t.p[0].y << "," << t.p[0].z << "}, " ;
-				//std::cout << "{" << t.p[1].x  << "," << t.p[1].y << "," << t.p[1].z << "}, " ;
-				//std::cout << "{" << t.p[2].x  << "," << t.p[2].y << "," << t.p[2].z << "}" ; 
-				//std::cout << " }}," << std::endl; 
-
 				tris.push_back(t);
 			}
 		}
@@ -139,33 +124,15 @@ struct mesh
 		}
 		std::cout << "};" << std::endl;	
 
-
-		//Output the tris vector to console
-		//std::cout << "std::vector<triangleref> trirefs = {" << std::endl;
-		//for (auto& t : tris)
-		//{
-		//	std::cout << "{{";
-		//	std::cout << "{" << t.p[0]->x << "," << t.p[0]->y << "," << t.p[0]->z << "}, ";
-		//	std::cout << "{" << t.p[1]->x << "," << t.p[1]->y << "," << t.p[1]->z << "}, ";
-		//	std::cout << "{" << t.p[2]->x << "," << t.p[2]->y << "," << t.p[2]->z << "}}";
-		//	std::cout << "}}," << std::endl;
-		//}
-		//std::cout << "};" << std::endl;   
-   
-
-	  
-
     return true;
   }
 };
 
-struct mat4x4
-{
+struct mat4x4 {
 	float m[4][4] = { 0 };
 };
 
-struct FaceMesh
-{
+struct FaceMesh {
 	std::vector<vec3d> verts = {
 		{-0.119486, 0.13388, 1.2632},
 		{-0.116373, -0.052441, 1.16916},
@@ -314,8 +281,7 @@ struct FaceMesh
 
 	std::vector<triangleref> tris;
 
-	void LoadModel()
-	{
+	void LoadModel() {
 		for (auto& f : faces)
 		{
 			triangleref t;
@@ -417,16 +383,13 @@ struct FaceMesh
 	*/
 };
  
-struct Star 
-{
+struct Star {
 	float x, y, z, o;
 };
 
-class ThreeDimensionRenderer : public olc::PixelGameEngine
-{
+class ThreeDimensionRenderer : public olc::PixelGameEngine {
 public:
-  ThreeDimensionRenderer()
-  {
+  ThreeDimensionRenderer() {
     sAppName = "VanAssistant";
   }
 
@@ -465,8 +428,7 @@ private:
 	const float aspectRatio = static_cast<float>(SCREEN_W) / static_cast<float>(SCREEN_H);
 	const float fovRad = 1.0f / tan(fov * 0.5f / 180.0f * 3.14159f);
 
-	void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m)
-	{
+	void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
 		o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
 		o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
 		o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
@@ -564,8 +526,9 @@ private:
 		 // Set up rotation matrices
 		mat4x4 matRotZ, matRotX;
 		
-    //DrZoid: disabling rotation for now
-    //fTheta += 0.001f; //1.0f * fElapsedTime;
+		#ifdef ENABLE_FACE_ROTATION
+    	fTheta += 0.001f; //1.0f * fElapsedTime;
+		#endif
 		
     // debug
     if(bShowDebug) {
@@ -597,8 +560,7 @@ private:
 		
 		// Draw Triangles
 		int index=0;
-		for (triangleref tri : meshFace.tris)
-		{
+		for (triangleref tri : meshFace.tris) {
 			triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
 
 			// Rotate in Z-Axis
@@ -681,25 +643,23 @@ private:
   }
 
   virtual bool OnUserUpdate(float fElapsedTime) {
+
     fAccumulatedTime += fElapsedTime;
 
     Clear(olc::BLACK);
 
     //input to toggle debug text
-    if (GetKey(olc::Key::B).bPressed)
-    {
+    if (GetKey(olc::Key::B).bPressed) {
       bShowDebug = !bShowDebug;
     }
 
     //input to toggle fps
-    if (GetKey(olc::Key::F).bPressed)
-    {
+    if (GetKey(olc::Key::F).bPressed) {
       bShowFps = !bShowFps;
     }
 
 		
-    if (GetKey(olc::Key::UP).bPressed)
-    {
+    if (GetKey(olc::Key::UP).bPressed) {
       triIndex++;
 			if(triIndex > meshFace.tris.size()) 
 				triIndex = meshFace.tris.size();
@@ -714,15 +674,21 @@ private:
 
 		DrawTitle();
 	
-		//DrawStarfield();
+		#ifdef ENABLE_STARFIELD
+			DrawStarfield();
+		#endif
 
-		//DrawGrid();
+		#ifdef ENABLE_GRID
+			DrawGrid();
+		#endif
 
 		Draw3dFace();
-
-		DrawFPS(GetFPS());
+		
+		#ifdef ENABLE_FPS
+			DrawFPS(GetFPS());
+		#endif
   
-    if(fAccumulatedTime>fTargetFrameTime){
+    if(fAccumulatedTime>fTargetFrameTime) {
       fAccumulatedTime=0.0f;
     }
     return true;
