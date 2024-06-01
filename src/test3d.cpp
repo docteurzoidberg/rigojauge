@@ -149,7 +149,37 @@ struct LeftEye {
     {16,2},
     {17,0},
     {17,2},
-    {18,0},
+    {18,0}, 
+    {56,1}
+  };
+  std::vector<vec3d*> verts;
+};
+
+struct RightEye {
+  std::vector<bidule> bidules = {
+    {24,1},
+    {24,2},
+    {26,0},
+    {39,0},
+    {42,0},
+    {42,2},
+    {71,1},
+  };
+  std::vector<vec3d*> verts;
+};
+
+struct Mouth {
+  std::vector<bidule> bidules = {
+    {7,1},
+    {9,1},
+    {9,2},
+    {10,1},
+    {12,0},
+    {12,2},
+    {33,1},
+    {33,2},
+    {35,0},
+    {47,1},
   };
   std::vector<vec3d*> verts;
 };
@@ -302,7 +332,10 @@ struct FaceMesh {
 	};
 
 	std::vector<triangleref> tris;
+
   LeftEye leftEye;
+  RightEye rightEye;
+  Mouth mouth;
 
 	void LoadModel() {
 		for (auto& f : faces)
@@ -316,6 +349,14 @@ struct FaceMesh {
     //load left eye vertices references
     for (auto& b : leftEye.bidules) {
       leftEye.verts.push_back(tris[b.triIndex].p[b.pointIndex]);
+    }
+    //load right eye vertices references
+    for (auto& b : rightEye.bidules) {
+      rightEye.verts.push_back(tris[b.triIndex].p[b.pointIndex]);
+    }
+    //load mouth vertices references
+    for (auto& b : mouth.bidules) {
+      mouth.verts.push_back(tris[b.triIndex].p[b.pointIndex]);
     }
 	}
 
@@ -632,7 +673,30 @@ private:
           vec3d leftEyeTrianglePoint =*leftEyeTriangle.p[bidule.pointIndex];
           if(trianglePoint.x == leftEyeTrianglePoint.x && trianglePoint.y == leftEyeTrianglePoint.y && trianglePoint.z == leftEyeTrianglePoint.z) {
             FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
-            meshFace.leftEye.verts.push_back(tri.p[i]);
+          }
+        }
+      }
+
+      //check if projected tri contains one or more right eye points
+      for(auto bidule: meshFace.rightEye.bidules) {
+        for(int i=0; i<3; i++) {
+          vec3d trianglePoint = *tri.p[i];
+          triangleref rightEyeTriangle = meshFace.tris[bidule.triIndex];
+          vec3d rightEyeTrianglePoint =*rightEyeTriangle.p[bidule.pointIndex];
+          if(trianglePoint.x == rightEyeTrianglePoint.x && trianglePoint.y == rightEyeTrianglePoint.y && trianglePoint.z == rightEyeTrianglePoint.z) {
+            FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
+          }
+        }
+      }
+
+       //check if projected tri contains one or more mouth points
+      for(auto bidule: meshFace.mouth.bidules) {
+        for(int i=0; i<3; i++) {
+          vec3d trianglePoint = *tri.p[i];
+          triangleref mouthTriangle = meshFace.tris[bidule.triIndex];
+          vec3d mouthTrianglePoint =*mouthTriangle.p[bidule.pointIndex];
+          if(trianglePoint.x == mouthTrianglePoint.x && trianglePoint.y == mouthTrianglePoint.y && trianglePoint.z == mouthTrianglePoint.z) {
+            FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
           }
         }
       }
