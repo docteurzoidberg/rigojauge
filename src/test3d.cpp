@@ -478,73 +478,85 @@ struct Grid {
   const float gridHeight = 120.0f; // Height of the grid in the Y direction
 };
 
-
 class TextAnimator {
 public:
-    TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime, float cursorBlinkRate)
-        : pge(pge), typeSpeed(typeSpeed), pauseTime(pauseTime), cursorBlinkRate(cursorBlinkRate),
-          currentIndex(0), lastUpdate(std::chrono::high_resolution_clock::now()),
-          isTyping(false), cursorVisible(true), lastCursorBlink(std::chrono::high_resolution_clock::now()) {}
+  TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime, float cursorBlinkRate)
+    : pge(pge), typeSpeed(typeSpeed), pauseTime(pauseTime), cursorBlinkRate(cursorBlinkRate),
+      currentIndex(0), lastUpdate(std::chrono::high_resolution_clock::now()), isTyping(false),
+      cursorVisible(true), lastCursorBlink(std::chrono::high_resolution_clock::now()), firstMessage(true), 
+      lastPauseStart(std::chrono::high_resolution_clock::now()), displayText(true) {}
 
-    void QueueText(const std::string& text) {
-        textQueue.push(text);
+  void QueueText(const std::string& text) {
+    textQueue.push(text);
+  }
+
+  void Update() {
+    auto now = std::chrono::high_resolution_clock::now();
+
+    // Manage text typing
+    if (!textQueue.empty() && !isTyping) {
+      if (firstMessage || std::chrono::duration<float>(now - lastUpdate).count() >= pauseTime) {
+        currentText = textQueue.front();
+        textQueue.pop();
+        currentIndex = 0;
+        isTyping = true;
+        firstMessage = false;
+        lastUpdate = now;
+        displayText = true; // Ensure text is displayed after the pause
+      }
+    } else if (isTyping) {
+      if (std::chrono::duration<float>(now - lastUpdate).count() >= typeSpeed) {
+        currentIndex++;
+        lastUpdate = now;
+
+        if (currentIndex > currentText.size()) {
+          isTyping = false;
+          lastPauseStart = std::chrono::high_resolution_clock::now();
+          if (textQueue.empty()) {
+            displayText = false; // Prepare to hide text after final pause
+          }
+        }
+      }
     }
 
-    void Update() {
-        auto now = std::chrono::high_resolution_clock::now();
-
-        // Manage text typing
-        if (!textQueue.empty() && !isTyping) {
-            if (std::chrono::duration<float>(now - lastUpdate).count() >= pauseTime) {
-                currentText = textQueue.front();
-                textQueue.pop();
-                currentIndex = 0;
-                isTyping = true;
-                lastUpdate = now;
-            }
-        } else if (isTyping) {
-            if (std::chrono::duration<float>(now - lastUpdate).count() >= typeSpeed) {
-                currentIndex++;
-                lastUpdate = now;
-
-                if (currentIndex > currentText.size()) {
-                    isTyping = false;
-                    lastUpdate = std::chrono::high_resolution_clock::now();
-                }
-            }
-        }
-
-        // Manage cursor blinking
-        if (std::chrono::duration<float>(now - lastCursorBlink).count() >= cursorBlinkRate) {
-            cursorVisible = !cursorVisible;
-            lastCursorBlink = now;
-        }
+    // Hide the text after the final pause time
+    if (!isTyping && textQueue.empty() && std::chrono::duration<float>(now - lastPauseStart).count() >= pauseTime) {
+      displayText = false;
     }
 
-    void DrawText(int x, int y, olc::Pixel color = olc::WHITE) {
-        if (isTyping && currentIndex <= currentText.size()) {
-            std::string toDraw = currentText.substr(0, currentIndex);
-            pge->DrawString(x, y, toDraw, color);
-
-            if (cursorVisible) {
-                int cursorX = x + toDraw.length() * 8; // Assuming each character is 8 pixels wide
-                pge->FillRect(cursorX, y, 8, 8, color); // Draw the cursor as an 8x8 rectangle
-            }
-        }
+    // Manage cursor blinking
+    if (std::chrono::duration<float>(now - lastCursorBlink).count() >= cursorBlinkRate) {
+      cursorVisible = !cursorVisible;
+      lastCursorBlink = now;
     }
+  }
+
+  void DrawText(int x, int y, olc::Pixel color = olc::WHITE) {
+    if (displayText) {
+      std::string toDraw = currentText.substr(0, currentIndex);
+      pge->DrawString(x, y, toDraw, color);
+      if (cursorVisible && (isTyping || (!isTyping && !textQueue.empty()))) {
+          int cursorX = x + toDraw.length() * 8; // Assuming each character is 8 pixels wide
+          pge->FillRect(cursorX, y, 8, 8, color); // Draw the cursor as an 8x8 rectangle
+      }
+    }
+  }
 
 private:
-    olc::PixelGameEngine* pge;
-    std::queue<std::string> textQueue;
-    std::string currentText;
-    size_t currentIndex;
-    float typeSpeed;
-    float pauseTime;
-    float cursorBlinkRate;
-    std::chrono::high_resolution_clock::time_point lastUpdate;
-    std::chrono::high_resolution_clock::time_point lastCursorBlink;
-    bool isTyping;
-    bool cursorVisible;
+  olc::PixelGameEngine* pge;
+  std::queue<std::string> textQueue;
+  std::string currentText;
+  size_t currentIndex;
+  float typeSpeed;
+  float pauseTime;
+  float cursorBlinkRate;
+  std::chrono::high_resolution_clock::time_point lastUpdate;
+  std::chrono::high_resolution_clock::time_point lastCursorBlink;
+  std::chrono::high_resolution_clock::time_point lastPauseStart;
+  bool isTyping;
+  bool cursorVisible;
+  bool firstMessage;
+  bool displayText;
 };
 
 class ThreeDimensionRenderer : public olc::PixelGameEngine {
@@ -808,7 +820,7 @@ private:
 
     starField.Init(); 
 
-    animator = new TextAnimator(this, 0.1f, 3.0f, 1.0f);
+    animator = new TextAnimator(this, 0.15f, 3.0f, 0.2f);
 
     animator->QueueText("Hello, world!");
     animator->QueueText("This is a test.");
