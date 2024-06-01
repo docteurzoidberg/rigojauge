@@ -59,6 +59,14 @@ struct triangle {
 	vec3d p[3];
 };
 
+struct star {
+	float x, y, z, o;
+};
+
+struct mat4x4 {
+	float m[4][4] = { 0 };
+};
+
 #ifdef ENABLE_MODEL_LOADER
 struct MeshLoader {
 
@@ -129,12 +137,21 @@ struct MeshLoader {
 };
 #endif
 
-struct star {
-	float x, y, z, o;
+struct bidule {
+  int triIndex;
+  int pointIndex;
 };
 
-struct mat4x4 {
-	float m[4][4] = { 0 };
+struct LeftEye {
+  std::vector<bidule> bidules = {
+    {15,1},
+    {16,1},
+    {16,2},
+    {17,0},
+    {17,2},
+    {18,0},
+  };
+  std::vector<vec3d*> verts;
 };
 
 struct FaceMesh {
@@ -285,6 +302,7 @@ struct FaceMesh {
 	};
 
 	std::vector<triangleref> tris;
+  LeftEye leftEye;
 
 	void LoadModel() {
 		for (auto& f : faces)
@@ -295,6 +313,10 @@ struct FaceMesh {
 			t.p[2] = &verts[f.f[2] - 1];
 			tris.push_back(t);
 		}
+    //load left eye vertices references
+    for (auto& b : leftEye.bidules) {
+      leftEye.verts.push_back(tris[b.triIndex].p[b.pointIndex]);
+    }
 	}
 
 	/*
@@ -443,7 +465,7 @@ private:
 
   #ifdef ENABLE_MODEL_LOADER
     //to load the model's obj, and generate the tri vector initalization from console output
-    mesh meshLoader;
+    MeshLoader meshLoader;
   #endif
 	
 	void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
@@ -561,7 +583,13 @@ private:
 		
 		// Draw Triangles
 		int index=0;
-		for (triangleref tri : meshFace.tris) {
+
+    #ifdef ENABLE_MODEL_LOADER
+      for (triangleref tri : meshLoader.tris) {
+    #else
+		  for (triangleref tri : meshFace.tris) {
+    #endif
+
 			triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
 
 			// Rotate in Z-Axis
@@ -595,9 +623,22 @@ private:
 			triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
 			triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
 			triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
- 
+
+      //check if projected tri contains one or more left eye points
+      for(auto bidule: meshFace.leftEye.bidules) {
+        for(int i=0; i<3; i++) {
+          vec3d trianglePoint = *tri.p[i];
+          triangleref leftEyeTriangle = meshFace.tris[bidule.triIndex];
+          vec3d leftEyeTrianglePoint =*leftEyeTriangle.p[bidule.pointIndex];
+          if(trianglePoint.x == leftEyeTrianglePoint.x && trianglePoint.y == leftEyeTrianglePoint.y && trianglePoint.z == leftEyeTrianglePoint.z) {
+            FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
+            meshFace.leftEye.verts.push_back(tri.p[i]);
+          }
+        }
+      }
+
 			// Rasterize triangle
-			if(index == triIndex) {
+			if(index == triIndex && bShowDebug) {
 				FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
 					triProjected.p[1].x, triProjected.p[1].y,
 					triProjected.p[2].x, triProjected.p[2].y, olc::RED);
@@ -612,16 +653,19 @@ private:
 			}
 			index++;
 		}
+
+    
 	}
 
   virtual bool OnUserCreate() {
 
     #ifdef ENABLE_MODEL_LOADER 
+      //Load model's triangles from the file
 		  meshLoader.LoadFromObjectFile("./models/face2x.obj");
+    #else
+      //Load model's triangles from the mesh object
+      meshFace.LoadModel();
     #endif
-
-    //Load model's triangles from the mesh
-		meshFace.LoadModel();
 
     starField.Init();
 
@@ -644,8 +688,6 @@ private:
 		matProj.m[2][3] = 1.0f;
 		matProj.m[3][3] = 0.0f;
 
-		//InitStartField();
-
     return true;
   }
 
@@ -665,15 +707,20 @@ private:
       bShowFps = !bShowFps;
     }
 		
+    //select next triangle
     if (GetKey(olc::Key::UP).bPressed) {
       triIndex++;
-			if(triIndex > meshFace.tris.size()) 
-				triIndex = meshFace.tris.size();
+      #ifdef ENABLE_MODEL_LOADER
+        if(triIndex > meshLoader.tris.size()-1) 
+          triIndex = meshLoader.tris.size()-1;
+      #else
+        if(triIndex > meshFace.tris.size()-1) 
+          triIndex = meshFace.tris.size()-1;
+      #endif
     }
 
-		 //input to toggle fps
-    if (GetKey(olc::Key::DOWN).bPressed)
-    {
+    //select previous triangle
+    if (GetKey(olc::Key::DOWN).bPressed) {
       triIndex--;
 			if(triIndex < 0) triIndex = 0;
     }
@@ -705,5 +752,4 @@ int main() {
 	ThreeDimensionRenderer renderer;
 	if (renderer.Construct(SCREEN_W , SCREEN_H, SCREEN_PIXELSIZE, SCREEN_PIXELSIZE))
 		renderer.Start();
-	return 0;
 }
