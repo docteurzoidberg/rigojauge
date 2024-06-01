@@ -482,9 +482,11 @@ class TextAnimator {
 public:
   TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime, float cursorBlinkRate)
     : pge(pge), typeSpeed(typeSpeed), pauseTime(pauseTime), cursorBlinkRate(cursorBlinkRate),
-      currentIndex(0), lastUpdate(std::chrono::high_resolution_clock::now()), isTyping(false),
-      cursorVisible(true), lastCursorBlink(std::chrono::high_resolution_clock::now()), firstMessage(true), 
-      lastPauseStart(std::chrono::high_resolution_clock::now()), displayText(true) {}
+      currentIndex(0), isTyping(false), cursorVisible(true), firstMessage(true), displayText(true) {
+    lastUpdate = std::chrono::high_resolution_clock::now();
+    lastCursorBlink = std::chrono::high_resolution_clock::now();
+    lastPauseStart = std::chrono::high_resolution_clock::now();
+  }
 
   void QueueText(const std::string& text) {
     textQueue.push(text);
@@ -493,52 +495,20 @@ public:
   void Update() {
     auto now = std::chrono::high_resolution_clock::now();
 
-    // Manage text typing
-    if (!textQueue.empty() && !isTyping) {
-      if (firstMessage || std::chrono::duration<float>(now - lastUpdate).count() >= pauseTime) {
-        currentText = textQueue.front();
-        textQueue.pop();
-        currentIndex = 0;
-        isTyping = true;
-        firstMessage = false;
-        lastUpdate = now;
-        displayText = true; // Ensure text is displayed after the pause
-      }
-    } else if (isTyping) {
-      if (std::chrono::duration<float>(now - lastUpdate).count() >= typeSpeed) {
-        currentIndex++;
-        lastUpdate = now;
-
-        if (currentIndex > currentText.size()) {
-          isTyping = false;
-          lastPauseStart = std::chrono::high_resolution_clock::now();
-          if (textQueue.empty()) {
-            displayText = false; // Prepare to hide text after final pause
-          }
-        }
-      }
+    if (isTyping) {
+      UpdateTyping(now);
+    } else {
+      HandlePause(now);
     }
 
-    // Hide the text after the final pause time
-    if (!isTyping && textQueue.empty() && std::chrono::duration<float>(now - lastPauseStart).count() >= pauseTime) {
-      displayText = false;
-    }
-
-    // Manage cursor blinking
-    if (std::chrono::duration<float>(now - lastCursorBlink).count() >= cursorBlinkRate) {
-      cursorVisible = !cursorVisible;
-      lastCursorBlink = now;
-    }
+    UpdateCursorBlink(now);
   }
 
   void DrawText(int x, int y, olc::Pixel color = olc::WHITE) {
     if (displayText) {
       std::string toDraw = currentText.substr(0, currentIndex);
       pge->DrawString(x, y, toDraw, color);
-      if (cursorVisible && (isTyping || (!isTyping && !textQueue.empty()))) {
-          int cursorX = x + toDraw.length() * 8; // Assuming each character is 8 pixels wide
-          pge->FillRect(cursorX, y, 8, 8, color); // Draw the cursor as an 8x8 rectangle
-      }
+      DrawCursor(x, y, toDraw, color);
     }
   }
 
@@ -557,6 +527,55 @@ private:
   bool cursorVisible;
   bool firstMessage;
   bool displayText;
+
+  void StartTyping() {
+    currentText = textQueue.front();
+    textQueue.pop();
+    currentIndex = 0;
+    isTyping = true;
+    lastUpdate = std::chrono::high_resolution_clock::now();
+  }
+
+  void UpdateTyping(const std::chrono::high_resolution_clock::time_point& now) {
+    if (std::chrono::duration<float>(now - lastUpdate).count() >= typeSpeed) {
+      currentIndex++;
+      lastUpdate = now;
+      if (currentIndex > currentText.size()) {
+        isTyping = false;
+        lastPauseStart = now;
+        if (textQueue.empty()) {
+          displayText = false;
+        }
+      }
+    }
+  }
+
+  void HandlePause(const std::chrono::high_resolution_clock::time_point& now) {
+    if (firstMessage || std::chrono::duration<float>(now - lastUpdate).count() >= pauseTime) {
+      if (!textQueue.empty()) {
+        StartTyping();
+        firstMessage = false;
+      }
+    }
+
+    if (textQueue.empty() && std::chrono::duration<float>(now - lastPauseStart).count() >= pauseTime) {
+      displayText = false;
+    }
+  }
+
+  void UpdateCursorBlink(const std::chrono::high_resolution_clock::time_point& now) {
+    if (std::chrono::duration<float>(now - lastCursorBlink).count() >= cursorBlinkRate) {
+      cursorVisible = !cursorVisible;
+      lastCursorBlink = now;
+    }
+  }
+
+  void DrawCursor(int x, int y, const std::string& toDraw, olc::Pixel color) {
+    if (cursorVisible && (isTyping || (!isTyping && !textQueue.empty()))) {
+      int cursorX = x + toDraw.length() * 8; // Assuming each character is 8 pixels wide
+      pge->FillRect(cursorX, y, 8, 8, color); // Draw the cursor as an 8x8 rectangle
+    }
+  }
 };
 
 class ThreeDimensionRenderer : public olc::PixelGameEngine {
