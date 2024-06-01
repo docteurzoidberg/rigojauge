@@ -26,6 +26,10 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <queue>
+#include <string>
+#include <chrono>
+
 
 // Global random number generator and distribution
 std::random_device rd;
@@ -474,10 +478,64 @@ struct Grid {
   const float gridHeight = 120.0f; // Height of the grid in the Y direction
 };
 
+class TextAnimator {
+public:
+  TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime)
+    : pge(pge), typeSpeed(typeSpeed), pauseTime(pauseTime), currentIndex(0),
+      lastUpdate(std::chrono::high_resolution_clock::now()), isTyping(false) {}
+
+  void QueueText(const std::string& text) {
+      textQueue.push(text);
+  }
+
+  void Update() {
+    auto now = std::chrono::high_resolution_clock::now();
+    if (!textQueue.empty() && !isTyping) {
+      // Start typing the next text after the pause
+      if (std::chrono::duration<float>(now - lastUpdate).count() >= pauseTime) {
+        currentText = textQueue.front();
+        textQueue.pop();
+        currentIndex = 0;
+        isTyping = true;
+        lastUpdate = now;
+      }
+    } else if (isTyping) {
+      // Type out the current text
+      if (std::chrono::duration<float>(now - lastUpdate).count() >= typeSpeed) {
+        currentIndex++;
+        lastUpdate = now;
+
+        if (currentIndex > currentText.size()) {
+            isTyping = false;
+            lastUpdate = std::chrono::high_resolution_clock::now();
+        }
+      }
+    }
+  }
+
+  void DrawText(int x, int y, olc::Pixel color = olc::WHITE) {
+    if (isTyping && currentIndex <= currentText.size()) {
+      std::string toDraw = currentText.substr(0, currentIndex);
+      pge->DrawString(x, y, toDraw, color);
+    }
+  }
+
+private:
+  olc::PixelGameEngine* pge;
+  std::queue<std::string> textQueue;
+  std::string currentText;
+  size_t currentIndex;
+  float typeSpeed;
+  float pauseTime;
+  std::chrono::high_resolution_clock::time_point lastUpdate;
+  bool isTyping;
+};
+
+
 class ThreeDimensionRenderer : public olc::PixelGameEngine {
 public:
   ThreeDimensionRenderer() {
-    sAppName = "VanAssistant";
+    sAppName = "3dTest";
   }
 
 private:
@@ -503,6 +561,8 @@ private:
   FaceMesh meshFace;
   StarField starField;
   Grid grid;
+
+  TextAnimator* animator;
 
   #ifdef ENABLE_MODEL_LOADER
     //to load the model's obj, and generate the tri vector initalization from console output
@@ -731,7 +791,16 @@ private:
       meshFace.LoadModel();
     #endif
 
-    starField.Init();
+    starField.Init(); 
+
+    animator = new TextAnimator(this, 0.1f, 3.0f);
+
+    animator->QueueText("Hello, world!");
+    animator->QueueText("This is a test.");
+    animator->QueueText("Hello, world!");
+    animator->QueueText("This is a test.");
+    animator->QueueText("Hello, world!");
+    animator->QueueText("This is a test.");
 
 		// Load Fonts
     pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
@@ -759,7 +828,13 @@ private:
 
     fAccumulatedTime += fElapsedTime;
 
+    // Update animator
+    animator->Update();
+
     Clear(olc::BLACK);
+
+     // Draw text
+    animator->DrawText(20,SCREEN_H-20);
 
     //input to toggle debug text
     if (GetKey(olc::Key::B).bPressed) {
