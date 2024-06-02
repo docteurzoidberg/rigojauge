@@ -13,9 +13,9 @@
 #define GRID_SIZE 12
 
 //#define ENABLE_MODEL_LOADER
-#define ENABLE_FACE_ROTATION
-#define ENABLE_STARFIELD
-#define ENABLE_GRID
+//#define ENABLE_FACE_ROTATION
+//#define ENABLE_STARFIELD
+//#define ENABLE_GRID
 #define ENABLE_FPS 
 
 #include <string>
@@ -381,6 +381,11 @@ struct FaceMesh {
 };
 */
 
+struct keyspeed {
+  uint16_t index;
+  float speed;
+};
+
 //Base class to load a 3d model
 class Model {
   public:
@@ -397,24 +402,24 @@ class AnimatedObject {
   public:
     AnimatedObject(Model* model)
       : model(model), currentAnimationIndex(0), isAnimating(false) {
-        //lastUpdate = std::chrono::high_resolution_clock::now();
         load();
       }
 
     void QueueAnimation(uint16_t index, float speed) {
-      animQueue.push(index);
+      animQueue.push({index, speed});
     }
 
     void Update() {
-      //WIP
       if (isAnimating) {
         _updateAnimation();
       } else {
-        //pop from queue
         if (!animQueue.empty()) {
-          currentAnimationIndex = animQueue.front();
+          auto ks = animQueue.front();
+          currentAnimationIndex = ks.index;
+          currentAnimationSpeed = ks.speed;
           animQueue.pop();
           isAnimating = true;
+          lastUpdate = std::chrono::high_resolution_clock::now();
         } 
       }
     }
@@ -429,7 +434,7 @@ class AnimatedObject {
 
     void load() {
       for (auto b : tps) {
-        std::cout << "triIndex: " << b.triIndex << " pointIndex: " << b.pointIndex << std::endl;
+        //std::cout << "triIndex: " << b.triIndex << " pointIndex: " << b.pointIndex << std::endl;
         verts.push_back(model->tris[b.triIndex].p[b.pointIndex]);
       }
     }
@@ -438,12 +443,33 @@ class AnimatedObject {
     Model* model;
     bool isAnimating=false;
     uint16_t currentAnimationIndex=0;
-    //double lastUpdate;
-    std::queue<uint16_t> animQueue;
+    float currentAnimationSpeed=0.0f;
+    std::queue<keyspeed> animQueue;
+    std::chrono::time_point<std::chrono::high_resolution_clock> lastUpdate;
 
+    
+    //move the vertices according toward current animation keyframe using speed as a factor
     void _updateAnimation() {
-      //TODO
-      //error("Not implemented");
+      
+      auto now = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<float> deltaTime = now - lastUpdate;
+      lastUpdate = now;
+      float t = deltaTime.count() * currentAnimationSpeed;
+
+      //loop on part's verts 
+      for(int i=0; i<verts.size(); i++) {
+        //move the vertex toward the current keyframe
+        auto v = verts[i];
+        auto kfv= kf_points[currentAnimationIndex][i];
+        v->x += (kfv.x - v->x) * currentAnimationSpeed;
+        v->y += (kfv.y - v->y) * currentAnimationSpeed;
+        v->z += (kfv.z - v->z) * currentAnimationSpeed;
+
+        //Check if animation is done
+        if (v->x == kfv.x && v->y == kfv.y && v->z == kfv.z) {
+          isAnimating = false; 
+        }
+      }
     }
 };
 
@@ -511,7 +537,7 @@ class MouthPart : public AnimatedObject {
 //3d face model including animated subparts
 class FaceModel : public Model {
   public:
-
+   
     //Hardcoded face model vertices
     // clang-format off
     std::vector<vec3d> verts = {
@@ -663,7 +689,9 @@ class FaceModel : public Model {
       {20, 21, 49},
     };
     // clang-format on
-  
+    
+    MouthPart* mouth;
+
     FaceModel() {
       for (auto& f : faces)
       {
@@ -676,7 +704,9 @@ class FaceModel : public Model {
       mouth = new MouthPart(this);
     }
 
-    MouthPart* mouth;
+    void Update() {
+      mouth->Update();
+    }
 };
 
 class TextAnimator {
@@ -1061,7 +1091,7 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
 
 
       //queue close mouth animation
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.5f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.0005f);
 
       // Projection Matrix
       float fNear = 0.1f;
@@ -1086,6 +1116,9 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
 
       // Update animator
       animator->Update();
+
+      // Update face model animations
+      faceModel->Update();
 
       Clear(olc::BLACK);
 
