@@ -411,12 +411,7 @@ struct FaceMesh {
     //mouth.load(&tris);
   }
 };
-
 */
-
-
-
-
 
 class Model {
   public:
@@ -436,7 +431,7 @@ class AnimatedObject {
         load();
       }
 
-    void QueueAnimation(uint16_t index) {
+    void QueueAnimation(uint16_t index, float speed) {
       animQueue.push(index);
     }
 
@@ -676,12 +671,6 @@ class FaceModel : public Model {
     MouthPart* mouth;
 };
 
-
-
-
-
-
-
 class TextAnimator {
 public:
   TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime, float cursorBlinkRate)
@@ -786,371 +775,371 @@ private:
 };
 
 class ThreeDimensionRenderer : public olc::PixelGameEngine {
-public:
-  ThreeDimensionRenderer() {
-    sAppName = "3dTest";
-  }
+  public:
+    ThreeDimensionRenderer() {
+      sAppName = "3dTest";
+    }
 
-private:
+  private:
 
     bool bShowFps = true;
     bool bShowDebug = false;
 
     const float fAspectRatio = static_cast<float>(SCREEN_W) / static_cast<float>(SCREEN_H);
     const float fFov = 90.0f; // Field of view in degrees
-  const float fFovRad = 1.0f / tan(fFov * 0.5f / 180.0f * 3.14159f);
+    const float fFovRad = 1.0f / tan(fFov * 0.5f / 180.0f * 3.14159f);
 
     float fAccumulatedTime = 0.0f;
     float fTargetFrameTime = 100/1000.0f;
     float fTheta = 2* 3.14159f; 
   
-    at4x4 matProj;
+    mat4x4 matProj;
 
-  //Fonts
-  std::unique_ptr<olc::Font> pixelFont48;
-  std::unique_ptr<olc::Font> computerFont20;
-  std::unique_ptr<olc::Font> computerFont28;
-  std::unique_ptr<olc::Font> monoFont28;
+    //Fonts
+    std::unique_ptr<olc::Font> pixelFont48;
+    std::unique_ptr<olc::Font> computerFont20;
+    std::unique_ptr<olc::Font> computerFont28;
+    std::unique_ptr<olc::Font> monoFont28;
 
-  FaceModel* faceModel;
-  //FaceMesh meshFace;
-  StarField starField;
-  Grid grid;
+    FaceModel* faceModel;
+    //FaceMesh meshFace;
+    StarField starField;
+    Grid grid;
 
     TextAnimator* animator;
 
     #ifdef ENABLE_MODEL_LOADER
-    //to load the model's obj, and generate the tri vector initalization from console output
-    MeshLoader meshLoader;
+      //to load the model's obj, and generate the tri vector initalization from console output
+      MeshLoader meshLoader;
     #endif
   
-  void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
-    o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
-    o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
-    o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
-    float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
-    if (w != 0.0f)
-    {
-      o.x /= w; o.y /= w; o.z /= w;
-    }
-  }
-
-  // Function to project 3D coordinates to 2D screen coordinates
-  vec2d Project(float x, float y, float z ) {
-    float screenX = (x / (z * fAspectRatio)) * fFovRad * SCREEN_W + SCREEN_W / 2.0f;
-    float screenY = (y / z) * fFovRad * SCREEN_H + SCREEN_H / 2.0f;
-    return {screenX, screenY};
-  }
-
-  //for esp:
-  void DrawText(olc::Font* font, const std::string& text, const olc::vf2d& pos, const olc::Pixel& col, const olc::vf2d& scale = {1.0f, 1.0f}) {
-    font->DrawStringPropDecal(pos, text, col, scale);
-  }
-
-  void DrawGrid() {
-    // Draw the one-axis perspective grid (Z-axis lines)
-    for (int i = -GRID_SIZE; i <= GRID_SIZE; ++i) {
-      for (int j = 1; j < grid.gridDepth; j += GRID_SIZE) {
-        // Lines parallel to the X-axis
-        vec2d startX = Project(-GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
-        vec2d endX = Project(GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
-        DrawLine(startX.x, startX.y, endX.x, endX.y, olc::WHITE);
-
-        // Lines parallel to the Z-axis
-        vec2d startZ = Project(i * GRID_SIZE, grid.gridHeight, j);
-        vec2d endZ = Project(i * GRID_SIZE, grid.gridHeight, j + GRID_SIZE);
-        DrawLine(startZ.x, startZ.y, endZ.x, endZ.y, olc::WHITE);
+    void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
+      o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
+      o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
+      o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
+      float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
+      if (w != 0.0f)
+      {
+        o.x /= w; o.y /= w; o.z /= w;
       }
     }
-  }
 
-  void DrawStarfield() {
-    int pixelX;
-    int pixelY;
-    int pixelRadius;
-      for(auto &star : starField.stars){
-      star.z-= 0.1f;
-      if(star.z <= 0){
-        star.z = SCREEN_W;
-      }
-      pixelX = (star.x - starField.centerX) * (starField.focalLength / star.z);
-      pixelX += starField.centerX;
-      pixelY = (star.y - starField.centerY) * (starField.focalLength / star.z);
-      pixelY += starField.centerY;
-      pixelRadius = 1 * (starField.focalLength / star.z);
-      uint8_t brightness = star.o * 255;
-      auto pixelColor = olc::Pixel(brightness,brightness,brightness);
-      FillRect(pixelX, pixelY, pixelRadius, pixelRadius, pixelColor);
-    }
-  }
-
-  void DrawTitle() {
-    auto text = "Van Assistant 2000";
-    auto text_size   = computerFont28->GetTextSizeProp( text );
-    auto text_centre = text_size / 2.0f;
-    auto fScale                 = 1.0f;
-    computerFont28->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x) /2 ,2.0f}, text, olc::WHITE, {fScale, fScale} );
-    //monoFont28->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x) /2 ,5.0f}, text, olc::WHITE, {fScale, fScale} );
-  }
-
-  void DrawFPS(uint16_t fps) {
-    auto text = "FPS:"+ std::to_string(fps);
-    auto text_size   = computerFont20->GetTextSizeProp( text );
-    auto text_centre = text_size / 2.0f;
-    auto fScale                 = 1.0f;
-    computerFont20->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x),static_cast<float>(SCREEN_H-text_size.y)}, text, olc::WHITE, {fScale, fScale} );
-  }
-
-  void Draw3dFace() {
-    
-     // Set up rotation matrices
-    mat4x4 matRotZ, matRotX;
-    
-    #ifdef ENABLE_FACE_ROTATION
-      fTheta += 0.001f; //1.0f * fElapsedTime;
-    #endif
-    
-    // debug
-    if(bShowDebug) {
-      auto text = "i: " + std::to_string(triIndex);
-      auto text_size   = pixelFont48->GetTextSizeProp( text );
-      //auto text_centre      = text_size / 2.0f;
-      auto fScale                 = 1.0f;
-      pixelFont48->DrawStringPropDecal( {0,(float)SCREEN_H-text_size.y}, text, olc::MAGENTA, {fScale, fScale} );
+    // Function to project 3D coordinates to 2D screen coordinates
+    vec2d Project(float x, float y, float z ) {
+      float screenX = (x / (z * fAspectRatio)) * fFovRad * SCREEN_W + SCREEN_W / 2.0f;
+      float screenY = (y / z) * fFovRad * SCREEN_H + SCREEN_H / 2.0f;
+      return {screenX, screenY};
     }
 
-    //DrZoid: test point movement
-    //meshLoader.verts[0].x += 0.0001f;
+    //for esp:
+    void DrawText(olc::Font* font, const std::string& text, const olc::vf2d& pos, const olc::Pixel& col, const olc::vf2d& scale = {1.0f, 1.0f}) {
+      font->DrawStringPropDecal(pos, text, col, scale);
+    }
 
-    // Rotation Z
-    matRotZ.m[0][0] = cosf(fTheta);
-    matRotZ.m[0][1] = sinf(fTheta);
-    matRotZ.m[1][0] = -sinf(fTheta);
-    matRotZ.m[1][1] = cosf(fTheta);
-    matRotZ.m[2][2] = 1;
-    matRotZ.m[3][3] = 1;
+    void DrawGrid() {
+      // Draw the one-axis perspective grid (Z-axis lines)
+      for (int i = -GRID_SIZE; i <= GRID_SIZE; ++i) {
+        for (int j = 1; j < grid.gridDepth; j += GRID_SIZE) {
+          // Lines parallel to the X-axis
+          vec2d startX = Project(-GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
+          vec2d endX = Project(GRID_SIZE * GRID_SIZE, grid.gridHeight, j);
+          DrawLine(startX.x, startX.y, endX.x, endX.y, olc::WHITE);
 
-    // Rotation X
-    matRotX.m[0][0] = 1;
-    matRotX.m[1][1] = cosf(fTheta * 0.5f);
-    matRotX.m[1][2] = sinf(fTheta * 0.5f);
-    matRotX.m[2][1] = -sinf(fTheta * 0.5f);
-    matRotX.m[2][2] = cosf(fTheta * 0.5f);
-    matRotX.m[3][3] = 1;
-  
-    // Draw Triangles
-    int index=0;
-
-  #ifdef ENABLE_MODEL_LOADER
-    for (triangleref tri : meshLoader.tris) {
-  #else
-    for (triangleref tri : faceModel->tris) {
-  #endif
-
-      triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
-
-      // Rotate in Z-Axis
-      MultiplyMatrixVector(*tri.p[0], triRotatedZ.p[0], matRotZ);
-      MultiplyMatrixVector(*tri.p[1], triRotatedZ.p[1], matRotZ);
-      MultiplyMatrixVector(*tri.p[2], triRotatedZ.p[2], matRotZ);
-
-      // Rotate in X-Axis
-      MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZX.p[0], matRotX);
-      MultiplyMatrixVector(triRotatedZ.p[1], triRotatedZX.p[1], matRotX);
-      MultiplyMatrixVector(triRotatedZ.p[2], triRotatedZX.p[2], matRotX);
-
-      // Offset into the screen
-      triTranslated = triRotatedZX;
-      triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
-      triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
-      triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
-
-      // Project triangles from 3D --> 2D
-      MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
-      MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], matProj);
-      MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], matProj);
-
-      // Scale into view
-      triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
-      triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
-      triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
-      triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
-      triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
-      triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
-      triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
-      triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
-      triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
-
-      //check if projected tri contains one or more left eye points
-      //for(auto bidule: meshFace.leftEye.tps) {
-      //  for(int i=0; i<3; i++) {
-      //    vec3d trianglePoint = *tri.p[i];
-      //    triangleref leftEyeTriangle = meshFace.tris[bidule.triIndex];
-      //    vec3d leftEyeTrianglePoint =*leftEyeTriangle.p[bidule.pointIndex];
-      //    if(trianglePoint.x == leftEyeTrianglePoint.x && trianglePoint.y == leftEyeTrianglePoint.y && trianglePoint.z == leftEyeTrianglePoint.z) {
-      //      FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
-      //    }
-      //  }
-      // }
-
-      //check if projected tri contains one or more right eye points
-      //for(auto bidule: meshFace.rightEye.tps) {
-      //  for(int i=0; i<3; i++) {
-      //    vec3d trianglePoint = *tri.p[i];
-      //    triangleref rightEyeTriangle = meshFace.tris[bidule.triIndex];
-      //    vec3d rightEyeTrianglePoint =*rightEyeTriangle.p[bidule.pointIndex];
-      //    if(trianglePoint.x == rightEyeTrianglePoint.x && trianglePoint.y == rightEyeTrianglePoint.y && trianglePoint.z == rightEyeTrianglePoint.z) {
-      //      FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
-      //    }
-      //  }
-      //}
-
-      //check if projected tri contains one or more mouth points
-      for(auto bidule: faceModel->mouth->tps) {
-        for(int i=0; i<3; i++) {
-          vec3d trianglePoint = *tri.p[i];
-          //triangleref mouthTriangle = meshFace.tris[bidule.triIndex];
-          triangleref mouthTriangle = faceModel->tris[bidule.triIndex];
-          vec3d mouthTrianglePoint =*mouthTriangle.p[bidule.pointIndex];
-          if(trianglePoint.x == mouthTrianglePoint.x && trianglePoint.y == mouthTrianglePoint.y && trianglePoint.z == mouthTrianglePoint.z) {
-          FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
-          }
+          // Lines parallel to the Z-axis
+          vec2d startZ = Project(i * GRID_SIZE, grid.gridHeight, j);
+          vec2d endZ = Project(i * GRID_SIZE, grid.gridHeight, j + GRID_SIZE);
+          DrawLine(startZ.x, startZ.y, endZ.x, endZ.y, olc::WHITE);
         }
       }
+    }
 
-      // Rasterize triangle
-      if(index == triIndex && bShowDebug) {
-        FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
-          triProjected.p[1].x, triProjected.p[1].y,
-          triProjected.p[2].x, triProjected.p[2].y, olc::RED);
-        FillCircle(triProjected.p[0].x, triProjected.p[0].y, 4, olc::RED);
-        FillCircle(triProjected.p[1].x, triProjected.p[1].y, 4, olc::GREEN);
-        FillCircle(triProjected.p[2].x, triProjected.p[2].y, 4, olc::BLUE);
-
-      } else {
-        DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
-          triProjected.p[1].x, triProjected.p[1].y,
-          triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
+    void DrawStarfield() {
+      int pixelX;
+      int pixelY;
+      int pixelRadius;
+        for(auto &star : starField.stars){
+        star.z-= 0.1f;
+        if(star.z <= 0){
+          star.z = SCREEN_W;
+        }
+        pixelX = (star.x - starField.centerX) * (starField.focalLength / star.z);
+        pixelX += starField.centerX;
+        pixelY = (star.y - starField.centerY) * (starField.focalLength / star.z);
+        pixelY += starField.centerY;
+        pixelRadius = 1 * (starField.focalLength / star.z);
+        uint8_t brightness = star.o * 255;
+        auto pixelColor = olc::Pixel(brightness,brightness,brightness);
+        FillRect(pixelX, pixelY, pixelRadius, pixelRadius, pixelColor);
       }
-      index++;
-    }
-  }
-
-  virtual bool OnUserCreate() {
-
-    #ifdef ENABLE_MODEL_LOADER 
-      //Load model's triangles from the file
-      meshLoader.LoadFromObjectFile("./models/face2x.obj");
-    #else
-      //Load model's triangles from the mesh object
-      //meshFace.LoadModel();
-      faceModel = new FaceModel();
-    #endif
-
-    starField.Init(); 
-
-    // Load Fonts
-    pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
-    computerFont20 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_20.png");
-    computerFont28 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_28.png");
-    monoFont28 = std::make_unique<olc::Font>( "./sprites/test3d/font_monocode_28.png");
-
-    animator = new TextAnimator(this, 0.15f, 3.0f, 0.2f);    
-    animator->QueueText("Hello, world!");
-    animator->QueueText("This is a test.");
-    animator->QueueText("Hello, world!");
-    animator->QueueText("This is a test.");
-    animator->QueueText("Hello, world!");
-    animator->QueueText("This is a test.");
-
-
-    //queue close mouth animation
-    // meshFace.mouth.QueueAnimation(Mouth::KEY_FRAME::CLOSE, 0.5f);
-
-
-
-
-    // Projection Matrix
-    float fNear = 0.1f;
-    float fFar = 1000.0f;
-    float fFov = 90.0f;
-    float fAspectRatio = (float)ScreenHeight() / (float)ScreenWidth();
-    float fFovRad = 1.0f / tanf(fFov * 0.5f / 180.0f * 3.14159f);
-
-
-    matProj.m[0][0] = fAspectRatio * fFovRad;
-    matProj.m[1][1] = fFovRad;
-    matProj.m[2][2] = fFar / (fFar - fNear);
-    matProj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
-    matProj.m[2][3] = 1.0f;
-    matProj.m[3][3] = 0.0f;
-
-    return true;
-  }
-
-  virtual bool OnUserUpdate(float fElapsedTime) {
-
-    fAccumulatedTime += fElapsedTime;
-
-    // Update animator
-    animator->Update();
-
-    Clear(olc::BLACK);
-
-     // Draw text
-    animator->DrawText(20,SCREEN_H-20);
-
-    //input to toggle debug text
-    if (GetKey(olc::Key::B).bPressed) {
-      bShowDebug = !bShowDebug;
     }
 
-    //input to toggle fps
-    if (GetKey(olc::Key::F).bPressed) {
-      bShowFps = !bShowFps;
+    void DrawTitle() {
+      auto text = "Van Assistant 2000";
+      auto text_size   = computerFont28->GetTextSizeProp( text );
+      auto text_centre = text_size / 2.0f;
+      auto fScale                 = 1.0f;
+      computerFont28->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x) /2 ,2.0f}, text, olc::WHITE, {fScale, fScale} );
+      //monoFont28->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x) /2 ,5.0f}, text, olc::WHITE, {fScale, fScale} );
     }
+
+    void DrawFPS(uint16_t fps) {
+      auto text = "FPS:"+ std::to_string(fps);
+      auto text_size   = computerFont20->GetTextSizeProp( text );
+      auto text_centre = text_size / 2.0f;
+      auto fScale                 = 1.0f;
+      computerFont20->DrawStringPropDecal( {static_cast<float>(SCREEN_W-text_size.x),static_cast<float>(SCREEN_H-text_size.y)}, text, olc::WHITE, {fScale, fScale} );
+    }
+
+    void Draw3dFace() {
     
-    //select next triangle
-    if (GetKey(olc::Key::UP).bPressed) {
-      triIndex++;
-      #ifdef ENABLE_MODEL_LOADER
-        if(triIndex > meshLoader.tris.size()-1) 
-          triIndex = meshLoader.tris.size()-1;
-      #else
-        //if(triIndex > meshFace.tris.size()-1) 
-        //  triIndex = meshFace.tris.size()-1;
-        if(triIndex > faceModel->tris.size()-1) 
-          triIndex = faceModel->tris.size()-1;
+      // Set up rotation matrices
+      mat4x4 matRotZ, matRotX;
+      
+      #ifdef ENABLE_FACE_ROTATION
+        fTheta += 0.001f; //1.0f * fElapsedTime;
       #endif
-    }
+      
+      // debug
+      if(bShowDebug) {
+        auto text = "i: " + std::to_string(triIndex);
+        auto text_size   = pixelFont48->GetTextSizeProp( text );
+        //auto text_centre      = text_size / 2.0f;
+        auto fScale                 = 1.0f;
+        pixelFont48->DrawStringPropDecal( {0,(float)SCREEN_H-text_size.y}, text, olc::MAGENTA, {fScale, fScale} );
+      }
 
-    //select previous triangle
-    if (GetKey(olc::Key::DOWN).bPressed) {
-      triIndex--;
-      if(triIndex < 0) triIndex = 0;
-    }
+      //DrZoid: test point movement
+      //meshLoader.verts[0].x += 0.0001f;
 
-    DrawTitle();
-  
-    #ifdef ENABLE_STARFIELD
-      DrawStarfield();
-    #endif
+      // Rotation Z
+      matRotZ.m[0][0] = cosf(fTheta);
+      matRotZ.m[0][1] = sinf(fTheta);
+      matRotZ.m[1][0] = -sinf(fTheta);
+      matRotZ.m[1][1] = cosf(fTheta);
+      matRotZ.m[2][2] = 1;
+      matRotZ.m[3][3] = 1;
 
-    #ifdef ENABLE_GRID
-      DrawGrid();
-    #endif
-
-    Draw3dFace();
+      // Rotation X
+      matRotX.m[0][0] = 1;
+      matRotX.m[1][1] = cosf(fTheta * 0.5f);
+      matRotX.m[1][2] = sinf(fTheta * 0.5f);
+      matRotX.m[2][1] = -sinf(fTheta * 0.5f);
+      matRotX.m[2][2] = cosf(fTheta * 0.5f);
+      matRotX.m[3][3] = 1;
     
-    #ifdef ENABLE_FPS
-      DrawFPS(GetFPS());
+      // Draw Triangles
+      int index=0;
+
+    #ifdef ENABLE_MODEL_LOADER
+      for (triangleref tri : meshLoader.tris) {
+    #else
+      for (triangleref tri : faceModel->tris) {
     #endif
-  
-    if(fAccumulatedTime>fTargetFrameTime) {
-      fAccumulatedTime=0.0f;
+
+        triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
+
+        // Rotate in Z-Axis
+        MultiplyMatrixVector(*tri.p[0], triRotatedZ.p[0], matRotZ);
+        MultiplyMatrixVector(*tri.p[1], triRotatedZ.p[1], matRotZ);
+        MultiplyMatrixVector(*tri.p[2], triRotatedZ.p[2], matRotZ);
+
+        // Rotate in X-Axis
+        MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZX.p[0], matRotX);
+        MultiplyMatrixVector(triRotatedZ.p[1], triRotatedZX.p[1], matRotX);
+        MultiplyMatrixVector(triRotatedZ.p[2], triRotatedZX.p[2], matRotX);
+
+        // Offset into the screen
+        triTranslated = triRotatedZX;
+        triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
+        triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
+        triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
+
+        // Project triangles from 3D --> 2D
+        MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
+        MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], matProj);
+        MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], matProj);
+
+        // Scale into view
+        triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
+        triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
+        triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+        triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
+        triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
+        triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
+        triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
+        triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
+        triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+
+        //check if projected tri contains one or more left eye points
+        //for(auto bidule: meshFace.leftEye.tps) {
+        //  for(int i=0; i<3; i++) {
+        //    vec3d trianglePoint = *tri.p[i];
+        //    triangleref leftEyeTriangle = meshFace.tris[bidule.triIndex];
+        //    vec3d leftEyeTrianglePoint =*leftEyeTriangle.p[bidule.pointIndex];
+        //    if(trianglePoint.x == leftEyeTrianglePoint.x && trianglePoint.y == leftEyeTrianglePoint.y && trianglePoint.z == leftEyeTrianglePoint.z) {
+        //      FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
+        //    }
+        //  }
+        // }
+
+        //check if projected tri contains one or more right eye points
+        //for(auto bidule: meshFace.rightEye.tps) {
+        //  for(int i=0; i<3; i++) {
+        //    vec3d trianglePoint = *tri.p[i];
+        //    triangleref rightEyeTriangle = meshFace.tris[bidule.triIndex];
+        //    vec3d rightEyeTrianglePoint =*rightEyeTriangle.p[bidule.pointIndex];
+        //    if(trianglePoint.x == rightEyeTrianglePoint.x && trianglePoint.y == rightEyeTrianglePoint.y && trianglePoint.z == rightEyeTrianglePoint.z) {
+        //      FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
+        //    }
+        //  }
+        //}
+
+        //check if projected tri contains one or more mouth points
+        for(auto bidule: faceModel->mouth->tps) {
+          for(int i=0; i<3; i++) {
+            vec3d trianglePoint = *tri.p[i];
+            //triangleref mouthTriangle = meshFace.tris[bidule.triIndex];
+            triangleref mouthTriangle = faceModel->tris[bidule.triIndex];
+            vec3d mouthTrianglePoint =*mouthTriangle.p[bidule.pointIndex];
+            if(trianglePoint.x == mouthTrianglePoint.x && trianglePoint.y == mouthTrianglePoint.y && trianglePoint.z == mouthTrianglePoint.z) {
+            FillCircle(triProjected.p[i].x, triProjected.p[i].y, 2, olc::CYAN);
+            }
+          }
+        }
+
+        // Rasterize triangle
+        if(index == triIndex && bShowDebug) {
+          FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
+            triProjected.p[1].x, triProjected.p[1].y,
+            triProjected.p[2].x, triProjected.p[2].y, olc::RED);
+          FillCircle(triProjected.p[0].x, triProjected.p[0].y, 4, olc::RED);
+          FillCircle(triProjected.p[1].x, triProjected.p[1].y, 4, olc::GREEN);
+          FillCircle(triProjected.p[2].x, triProjected.p[2].y, 4, olc::BLUE);
+
+        } else {
+          DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+            triProjected.p[1].x, triProjected.p[1].y,
+            triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
+        }
+        index++;
+      }
     }
-    return true;
-  }
+
+    virtual bool OnUserCreate() {
+
+      #ifdef ENABLE_MODEL_LOADER 
+        //Load model's triangles from the file
+        meshLoader.LoadFromObjectFile("./models/face2x.obj");
+      #else
+        //Load model's triangles from the mesh object
+        //meshFace.LoadModel();
+        faceModel = new FaceModel();
+      #endif
+
+      starField.Init(); 
+
+      // Load Fonts
+      pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
+      computerFont20 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_20.png");
+      computerFont28 = std::make_unique<olc::Font>( "./sprites/test3d/font_computer_28.png");
+      monoFont28 = std::make_unique<olc::Font>( "./sprites/test3d/font_monocode_28.png");
+
+      animator = new TextAnimator(this, 0.15f, 3.0f, 0.2f);    
+      animator->QueueText("Hello, world!");
+      animator->QueueText("This is a test.");
+      animator->QueueText("Hello, world!");
+      animator->QueueText("This is a test.");
+      animator->QueueText("Hello, world!");
+      animator->QueueText("This is a test.");
+
+
+      //queue close mouth animation
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.5f);
+
+
+
+
+      // Projection Matrix
+      float fNear = 0.1f;
+      float fFar = 1000.0f;
+      float fFov = 90.0f;
+      float fAspectRatio = (float)ScreenHeight() / (float)ScreenWidth();
+      float fFovRad = 1.0f / tanf(fFov * 0.5f / 180.0f * 3.14159f);
+
+
+      matProj.m[0][0] = fAspectRatio * fFovRad;
+      matProj.m[1][1] = fFovRad;
+      matProj.m[2][2] = fFar / (fFar - fNear);
+      matProj.m[3][2] = (-fFar * fNear) / (fFar - fNear);
+      matProj.m[2][3] = 1.0f;
+      matProj.m[3][3] = 0.0f;
+
+      return true;
+    }
+
+    virtual bool OnUserUpdate(float fElapsedTime) {
+
+      fAccumulatedTime += fElapsedTime;
+
+      // Update animator
+      animator->Update();
+
+      Clear(olc::BLACK);
+
+      // Draw text
+      animator->DrawText(20,SCREEN_H-20);
+
+      //input to toggle debug text
+      if (GetKey(olc::Key::B).bPressed) {
+        bShowDebug = !bShowDebug;
+      }
+
+      //input to toggle fps
+      if (GetKey(olc::Key::F).bPressed) {
+        bShowFps = !bShowFps;
+      }
+      
+      //select next triangle
+      if (GetKey(olc::Key::UP).bPressed) {
+        triIndex++;
+        #ifdef ENABLE_MODEL_LOADER
+          if(triIndex > meshLoader.tris.size()-1) 
+            triIndex = meshLoader.tris.size()-1;
+        #else
+          //if(triIndex > meshFace.tris.size()-1) 
+          //  triIndex = meshFace.tris.size()-1;
+          if(triIndex > faceModel->tris.size()-1) 
+            triIndex = faceModel->tris.size()-1;
+        #endif
+      }
+
+      //select previous triangle
+      if (GetKey(olc::Key::DOWN).bPressed) {
+        triIndex--;
+        if(triIndex < 0) triIndex = 0;
+      }
+
+      DrawTitle();
+    
+      #ifdef ENABLE_STARFIELD
+        DrawStarfield();
+      #endif
+
+      #ifdef ENABLE_GRID
+        DrawGrid();
+      #endif
+
+      Draw3dFace();
+      
+      #ifdef ENABLE_FPS
+        DrawFPS(GetFPS());
+      #endif
+    
+      if(fAccumulatedTime>fTargetFrameTime) {
+        fAccumulatedTime=0.0f;
+      }
+      return true;
+    }
 };
 
 int main() {
