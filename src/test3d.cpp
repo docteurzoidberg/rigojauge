@@ -19,11 +19,12 @@
 #define ENABLE_FPS 
 
 #include <string>
+
 #ifdef ENABLE_MODEL_LOADER
   #include <fstream>
   #include <strstream>
 #endif
-#include <algorithm>
+
 #include <iostream>
 #include <random>
 #include <queue>
@@ -74,15 +75,15 @@ struct StarField {
   std::vector<star> stars;
   int focalLength = SCREEN_W*2;
   bool warp = false;
-  float centerX = SCREEN_W / 2;
-  float centerY = SCREEN_H / 2;
+  float centerX = (float)SCREEN_W / 2;
+  float centerY = (float)SCREEN_H / 2;
   void Init() {
     for(int i = 0; i < NUM_STARS; i++){
       stars.push_back({
-        x: (float)getRandomFloat() * SCREEN_W,
-        y: (float)getRandomFloat() * SCREEN_H,
-        z: (float)getRandomFloat() * SCREEN_W,
-        o: ((float)floor(getRandomFloat() * 99) + 1) / 10
+        .x = (float)getRandomFloat() * SCREEN_W,
+        .y = (float)getRandomFloat() * SCREEN_H,
+        .z = (float)getRandomFloat() * SCREEN_W,
+        .o = ((float)floor(getRandomFloat() * 99) + 1) / 10
       });
     }
   }
@@ -169,7 +170,6 @@ struct trianglepointindex {
 };
 
 /*
-
 struct LeftEye {
   //associate the vertices of the left eye with the corresponding triangles + point indexes
   std::vector<trianglepointindex> tps = {
@@ -210,38 +210,6 @@ struct RightEye {
       //verts.push_back(&tris[b.triIndex].p[b.pointIndex]);
     }
   }
-};
-
-struct Mouth {
-
-  //Animations enum
-  enum KEY_FRAME {
-    OPEN,
-    CLOSE
-  };
-
-  //associate the vertices of the mouth with the corresponding triangles + point indexes
-  std::vector<trianglepointindex> tps = {
-    {7,1},
-    {9,1},
-    {9,2},
-    {10,1},
-    {12,0},
-    {12,2},
-    {33,1},
-    {33,2},
-    {35,0},
-    {47,1},
-  };
-
-  //store the vertices references for the mouth
-  std::vector<vec3d*> verts;
-
-  //void load() {
-  //  for (auto& b : tps) {
-  //    verts.push_back(&tris[b.triIndex].p[b.pointIndex]);
-  //  }
-  //}
 };
 
 struct FaceMesh {
@@ -413,6 +381,7 @@ struct FaceMesh {
 };
 */
 
+//Base class to load a 3d model
 class Model {
   public:
     Model() {
@@ -423,6 +392,7 @@ class Model {
     std::vector<triangleref> tris;
 };
 
+//Base class for model animated parts
 class AnimatedObject {
   public:
     AnimatedObject(Model* model)
@@ -436,6 +406,7 @@ class AnimatedObject {
     }
 
     void Update() {
+      //WIP
       if (isAnimating) {
         _updateAnimation();
       } else {
@@ -446,7 +417,6 @@ class AnimatedObject {
           isAnimating = true;
         } 
       }
-     
     }
     //associate the vertices with the corresponding triangles + point indexes
     std::vector<trianglepointindex> tps;
@@ -477,13 +447,19 @@ class AnimatedObject {
     }
 };
 
+//Mouth part animations
 class MouthPart : public AnimatedObject {
   public:
+
+    //Animation keys
     enum KEY_FRAME {
       OPEN,
       CLOSE
     };
-    MouthPart(Model* model) : AnimatedObject(model) {
+
+    MouthPart(Model* model) : AnimatedObject(model) { 
+      //associate the vertices of the mouth with the corresponding triangles + point indexes
+      // clang-format off
       tps = {
         {7,1},
         {9,1},
@@ -496,19 +472,48 @@ class MouthPart : public AnimatedObject {
         {35,0},
         {47,1},
       };
+      //keyframe => vector<points>
       kf_points = {
-      //TODO: real points for each frame
-       {{0.0f},{0.1f},{0.2f}},
-       {{0.0f},{0.1f},{0.2f}},
+        //TODO: real points for each frame
+        //KEY_OPEN
+        {
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f}
+        },
+        //KEY_CLOSE
+        {
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f},
+          {0.0f,0.0f,0.0f}
+        },
       }; 
-      load();
+      // clang-format on
+      //loads tps into refs to the actual vertices
+      load(); 
     }
 };
-
+ 
+//3d face model including animated subparts
 class FaceModel : public Model {
   public:
 
     //Hardcoded face model vertices
+    // clang-format off
     std::vector<vec3d> verts = {
       {-0.119486, 0.13388, 1.2632},
       {-0.116373, -0.052441, 1.16916},
@@ -568,8 +573,10 @@ class FaceModel : public Model {
       {0.575843, -1.01292, 0.584976},
       {0.008665, -0.658158, 0.952657},
     };
+    // clang-format on
 
     //Hardcoded face model faces
+    // clang-format off
     std::vector<face> faces = {
       {6, 3, 5},
       {27, 8, 26},
@@ -655,6 +662,7 @@ class FaceModel : public Model {
       {33, 42, 14},
       {20, 21, 49},
     };
+    // clang-format on
   
     FaceModel() {
       for (auto& f : faces)
@@ -672,7 +680,7 @@ class FaceModel : public Model {
 };
 
 class TextAnimator {
-public:
+  public:
   TextAnimator(olc::PixelGameEngine* pge, float typeSpeed, float pauseTime, float cursorBlinkRate)
     : pge(pge), typeSpeed(typeSpeed), pauseTime(pauseTime), cursorBlinkRate(cursorBlinkRate),
       currentIndex(0), isTyping(false), cursorVisible(true), firstMessage(true), displayText(true) {
@@ -707,7 +715,7 @@ public:
     }
   }
 
-private:
+  private:
   olc::PixelGameEngine* pge;
   std::unique_ptr<olc::Font> font;
   std::queue<std::string> textQueue;
@@ -930,11 +938,10 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
       // Draw Triangles
       int index=0;
 
-    #ifdef ENABLE_MODEL_LOADER
-      for (triangleref tri : meshLoader.tris) {
-    #else
+     
+    
       for (triangleref tri : faceModel->tris) {
-    #endif
+  
 
         triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
 
@@ -1056,16 +1063,12 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
       //queue close mouth animation
       faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.5f);
 
-
-
-
       // Projection Matrix
       float fNear = 0.1f;
       float fFar = 1000.0f;
       float fFov = 90.0f;
       float fAspectRatio = (float)ScreenHeight() / (float)ScreenWidth();
       float fFovRad = 1.0f / tanf(fFov * 0.5f / 180.0f * 3.14159f);
-
 
       matProj.m[0][0] = fAspectRatio * fFovRad;
       matProj.m[1][1] = fFovRad;
