@@ -16,7 +16,7 @@
 //#define ENABLE_FACE_ROTATION
 //#define ENABLE_STARFIELD
 //#define ENABLE_GRID
-#define ENABLE_FPS 
+//#define ENABLE_FPS 
 
 #include <string>
 
