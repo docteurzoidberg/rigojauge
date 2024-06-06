@@ -58,6 +58,7 @@ struct triangleref {
 
 struct triangle {
   vec3d p[3];
+  olc::Pixel color;
 };
 
 struct star {
@@ -212,7 +213,7 @@ struct RightEye {
 
 struct keyduration {
   uint16_t index;
-  std::chrono::duration<float> duration;
+  float duration;
 };
 
 //Base class to load a 3d model
@@ -235,7 +236,7 @@ class AnimatedObject {
       }
 
     void QueueAnimation(uint16_t index, float duration) {
-      animQueue.push({index, std::chrono::duration<float>(duration)});
+      animQueue.push({index,duration});
     }
 
     void Update() {
@@ -246,7 +247,7 @@ class AnimatedObject {
           auto kd = animQueue.front();
           currentAnimationIndex = kd.index;
           currentAnimationDuration = kd.duration;
-          std::cout << "Starting animation " << currentAnimationIndex << " at speed " << currentAnimationDuration.count() << std::endl;
+          std::cout << "Starting animation " << currentAnimationIndex << " at speed " << currentAnimationDuration << std::endl;
           animQueue.pop();
           isAnimating = true;
           animationStartTime = std::chrono::high_resolution_clock::now();
@@ -273,7 +274,7 @@ class AnimatedObject {
     Model* model;
     bool isAnimating;
     uint16_t currentAnimationIndex;
-    std::chrono::duration<float> currentAnimationDuration;
+    float currentAnimationDuration;
     std::queue<keyduration> animQueue;
     std::chrono::time_point<std::chrono::high_resolution_clock> animationStartTime;
 
@@ -282,9 +283,12 @@ class AnimatedObject {
     void _updateAnimation() {
       
       auto now = std::chrono::high_resolution_clock::now();
+      typedef std::chrono::milliseconds ms;
       std::chrono::duration<float> elapsedTime = now - animationStartTime;
+
+      ms elapsedMs = std::chrono::duration_cast<ms>(elapsedTime);
       
-      float t = elapsedTime / currentAnimationDuration;
+      float t = elapsedMs.count() / (currentAnimationDuration*1000);
 
       if (t >= 1.0f) {
         t = 1.0f;
@@ -340,27 +344,27 @@ class MouthPart : public AnimatedObject {
         //TODO: real points for each frame
         //KEY_OPEN
         {
-          {-0.547272, -0.677873, 0.391896},  //=v[17]
-          {-0.310748, -0.546415, 0.579291},  //=v[16]
-          {-0.082378, -0.539592, 0.691661},  //=v[15]
-          {-0.20804, -0.78771, 0.587208},    //=v[18]
-          {0.004478, -0.790754, 0.641731},   //=v[56]
-          {0.216484, -0.78771, 0.587208},    //=v[46]
-          {0.555716, -0.677873, 0.391896},   //=v[45]
-          {0.319192, -0.546415, 0.579291},   //=v[44]
-          {0.090822, -0.539592, 0.691661},   //=v[43]
+          {-0.547272, -0.677873, 0.391896},   //=v[17]
+          {-0.310748, -0.546415, 0.579291},   //=v[16]
+          {-0.082378, -0.539592, 0.691661},   //=v[15]
+          {-0.20804, -0.78771, 0.587208},     //=v[18]
+          {0.004478, -0.790754, 0.641731},    //=v[56]
+          {0.216484, -0.78771, 0.587208},     //=v[46]
+          {0.555716, -0.677873, 0.391896},    //=v[45]
+          {0.319192, -0.546415, 0.579291},    //=v[44]
+          {0.090822, -0.539592, 0.691661},    //=v[43]
         },
         //KEY_CLOSE
         {
-          {-0.547272,-0.677873,0.391896},   //=v[17]
-          {-0.310748,-0.6632,0.579291},     //=v[16]
-          {-0.082378,-0.6447,0.691661},     //=v[15]
-          {-0.20804,-0.72056,0.587208},     //=v[18]
-          {0.004478,-0.71485,0.641731},     //=v[56]
-          {0.216484,-0.72056,0.587208},     //=v[46]
-          {0.555716,-0.677873,0.391896},    //=v[45]
-          {0.319192,-0.66319,0.579291},     //=v[44]
-          {0.090822,-0.6476,0.691661},      //=v[43]
+          {-0.547272,-0.677873,0.391896},     //=v[17]
+          {-0.310748,-0.6632,0.579291},       //=v[16]
+          {-0.082378,-0.6447,0.691661},       //=v[15]
+          {-0.20804,-0.72056,0.587208},       //=v[18]
+          {0.004478,-0.71485,0.641731},       //=v[56]
+          {0.216484,-0.72056,0.587208},       //=v[46]
+          {0.555716,-0.677873,0.391896},      //=v[45]
+          {0.319192,-0.66319,0.579291},       //=v[44]
+          {0.090822,-0.6476,0.691661},        //=v[43]
         },
       }; 
       // clang-format on
@@ -684,6 +688,7 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
     int iDbgTriIndex=0;
   
     mat4x4 matProj;
+    vec3d vCamera;
 
     //Fonts
     std::unique_ptr<olc::Font> pixelFont48;
@@ -816,7 +821,10 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
       matRotX.m[2][1] = -sinf(fTheta * 0.5f);
       matRotX.m[2][2] = cosf(fTheta * 0.5f);
       matRotX.m[3][3] = 1;
-    
+
+      // Store triagles for rastering later
+		  std::vector<triangle> vecTrianglesToRaster;
+      /*
       // Draw Triangles
       int index=0;
       for (triangleref tri : faceModel->tris) {
@@ -907,6 +915,115 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
         }
         index++;
       }
+      */
+
+      // Draw Triangles
+      for (auto tri : faceModel->tris)
+      {
+        triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
+
+        // Rotate in Z-Axis
+        MultiplyMatrixVector(*tri.p[0], triRotatedZ.p[0], matRotZ);
+        MultiplyMatrixVector(*tri.p[1], triRotatedZ.p[1], matRotZ);
+        MultiplyMatrixVector(*tri.p[2], triRotatedZ.p[2], matRotZ);
+
+        // Rotate in X-Axis
+        MultiplyMatrixVector(triRotatedZ.p[0], triRotatedZX.p[0], matRotX);
+        MultiplyMatrixVector(triRotatedZ.p[1], triRotatedZX.p[1], matRotX);
+        MultiplyMatrixVector(triRotatedZ.p[2], triRotatedZX.p[2], matRotX);
+
+        // Offset into the screen
+        triTranslated = triRotatedZX;
+        triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
+        triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
+        triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
+
+        // Use Cross-Product to get surface normal
+        vec3d normal, line1, line2;
+        line1.x = triTranslated.p[1].x - triTranslated.p[0].x;
+        line1.y = triTranslated.p[1].y - triTranslated.p[0].y;
+        line1.z = triTranslated.p[1].z - triTranslated.p[0].z;
+
+        line2.x = triTranslated.p[2].x - triTranslated.p[0].x;
+        line2.y = triTranslated.p[2].y - triTranslated.p[0].y;
+        line2.z = triTranslated.p[2].z - triTranslated.p[0].z;
+
+        normal.x = line1.y * line2.z - line1.z * line2.y;
+        normal.y = line1.z * line2.x - line1.x * line2.z;
+        normal.z = line1.x * line2.y - line1.y * line2.x;
+
+        // It's normally normal to normalise the normal
+        float l = sqrtf(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
+        normal.x /= l; normal.y /= l; normal.z /= l;
+
+        //if (normal.z < 0)
+        if(normal.x * (triTranslated.p[0].x - vCamera.x) + 
+          normal.y * (triTranslated.p[0].y - vCamera.y) +
+          normal.z * (triTranslated.p[0].z - vCamera.z) < 0.0f)
+        {
+          // Illumination
+          vec3d light_direction = { 0.0f, 0.0f, -1.0f };
+          float l = sqrtf(light_direction.x*light_direction.x + light_direction.y*light_direction.y + light_direction.z*light_direction.z);
+          light_direction.x /= l; light_direction.y /= l; light_direction.z /= l;
+
+          // How similar is normal to light direction
+          float dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z;
+
+          // Choose console colours as required (much easier with RGB)
+          //CHAR_INFO c = GetColour(dp);
+          
+          //triTranslated.sym = c.Char.UnicodeChar;
+
+          auto trianglecol = olc::Pixel(dp*255,dp*255,dp*255);
+          triTranslated.color = trianglecol;
+
+          // Project triangles from 3D --> 2D
+          MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], matProj);
+          MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], matProj);
+          MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], matProj);
+
+          triProjected.color = trianglecol;
+
+          // Scale into view
+          triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
+          triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
+          triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+          triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
+          triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
+          triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
+          triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
+          triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
+          triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+
+          // Store triangle for sorting
+          vecTrianglesToRaster.push_back(triProjected);
+        }
+
+      }
+
+      // Sort triangles from back to front
+      sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle &t1, triangle &t2)
+      {
+        float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+        float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+        return z1 > z2;
+      });
+
+      for (auto &triProjected : vecTrianglesToRaster)
+      {
+        // Rasterize triangle
+        FillTriangle(triProjected.p[0].x, triProjected.p[0].y,
+          triProjected.p[1].x, triProjected.p[1].y,
+          triProjected.p[2].x, triProjected.p[2].y,
+          triProjected.color);
+
+        /*DrawTriangle(triProjected.p[0].x, triProjected.p[0].y,
+        triProjected.p[1].x, triProjected.p[1].y,
+        triProjected.p[2].x, triProjected.p[2].y,
+        PIXEL_SOLID, FG_BLACK);*/
+      }
+
+
     }
 
     virtual bool OnUserCreate() {
@@ -935,17 +1052,17 @@ class ThreeDimensionRenderer : public olc::PixelGameEngine {
       animator->QueueText("This is a test.");
 
       //queue close mouth animation
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
-      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 0.26f);
+      faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 0.26f);
       faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);
       faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::CLOSE, 1.0f);
       faceModel->mouth->QueueAnimation(MouthPart::KEY_FRAME::OPEN, 1.0f);

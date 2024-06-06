@@ -1,10 +1,12 @@
 **/*.o
+olcEngine3D_Part4
 landscape.png
 testhills
 testentities
 testtiles
 testmode7
 test3d
+test3dviewer
 vanassistant
 tractocompass
 outrun
