@@ -522,7 +522,7 @@ public:
 		pDepthBuffer = new float[ScreenWidth() * ScreenHeight()];
 
 		// Load object file
-		meshCube.LoadFromObjectFile("models/scout.obj");
+		meshCube.LoadFromObjectFile("models/scout.obj", false);
 /*
 		meshCube.tris = {
 
@@ -745,12 +745,12 @@ public:
 		}
 
 		// Sort triangles from back to front
-		/*sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle &t1, triangle &t2)
+		sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle &t1, triangle &t2)
 		{
 			float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
 			float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
 			return z1 > z2;
-		});*/
+		});
 
 		// Clear Screen
 		Clear(olc::CYAN);

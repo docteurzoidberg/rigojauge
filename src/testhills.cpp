@@ -149,7 +149,7 @@ private:
   }
 
   virtual bool OnUserCreate()
-  {
+  {  
     srand(static_cast<unsigned int>(seed));
     landscape.midpointDisplacement(std::make_pair(250, 0), std::make_pair(landscape.width, 200), 1.4, .04*landscape.height, 12);
     landscape.midpointDisplacement(std::make_pair(0, .70*landscape.height), std::make_pair(landscape.width, .64*landscape.height), 0.9, .50*landscape.height, 8); 
@@ -160,6 +160,8 @@ private:
 
   virtual bool OnUserUpdate(float fElapsedTime)
   {
+   
+    seed++;
     Clear(colorPalette[colorPalette.size() - 1]);
     drawLayers(colorPalette);
     return true;

@@ -54,7 +54,6 @@ struct mat4x4 {
   float m[4][4] = { 0 };
 };
 
-
 struct MeshLoader {
 
   // Local cache of verts
@@ -161,7 +160,7 @@ class ModelViewer : public olc::PixelGameEngine {
 
     float fAccumulatedTime = 0.0f;
     float fTargetFrameTime = 100/1000.0f;
-    float fTheta = 2* 3.14159f; 
+    float fTheta = 0.0f; 
 
     int iDbgTriIndex=0;
   
@@ -307,6 +306,7 @@ class ModelViewer : public olc::PixelGameEngine {
           triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
           triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
           triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+
           triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
           triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
           triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
@@ -351,7 +351,7 @@ class ModelViewer : public olc::PixelGameEngine {
     virtual bool OnUserCreate() {
 
       //Load model's triangles from the file
-      meshLoader.LoadFromObjectFile("./models/scout.obj", 3.6f);
+      meshLoader.LoadFromObjectFile("./models/J7.obj", 1.0f);
 
       // Load Fonts
       pixelFont48 = std::make_unique<olc::Font>( "./sprites/test3d/font_48.png");
